@@ -14,3 +14,4 @@ Cargo.lock
 /proposal/*
 !/proposal/proposal.tex
 !/proposal/proposal.pdf
+!/proposal/images

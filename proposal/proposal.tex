@@ -1,38 +1,70 @@
 \documentclass{article}
 \usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\graphicspath{ {./images/} }
 
+\title{Mud}
+\author{Samir Beall, Joyal Mathew}
 
 \begin{document}
-\title{Project Proposal}
-\author{Samir Beall, Joyal Mathew}
-\maketitle
 
-\section{Introduction}
+\begin{center}
+  \includegraphics[scale=0.125]{mudfish}
+\end{center}
+
+{
+  \let \newpage \relax
+  \maketitle
+}
+
+\section*{Introduction}
+
 \begin{itemize}
-    \item \textbf{Project Name:} Mud
-    \item \textbf{Team Members:} Samir, Joyal
+\item
+  \textbf{Project Name:} Mud
+\item
+  \textbf{Team Members:} Samir, Joyal
 \end{itemize}
-\section{Overall Vision}
-Mud is a modern C-like programming language that offers simplicity, performance, and advanced features like zero cost abstraction, concurrency, and a powerful type system. It is a great language for teaching programming basics in a modern environment. Our complete project will be a fully fledged and bootstrapped compiler that can reliably and efficently compile Mud to a variety of targets.
 
-\section{Milestones:}
+\section*{Overall Vision}
+
+Our vision is to create a modern C-like programming language offering simplicity, performance, and advanced features. It will be a great language to teach low-level programming in a modern style. When complete, our project will include a fully self-hosted compiler targeting a variety of architectures.
+
+\section*{Milestones}
+
 \begin{enumerate}
-    \item \textbf{Week 4}
-        \begin{enumerate}
-            \item Outline the design goals of the language
-            \item Have a concrete definition of syntax
-            \item Implement a prototype lexer and parser
-        \end{enumerate}
-    \item \textbf{Week 8}
-        \begin{enumerate}
-            \item Implement a C transpiler written in rust
-            \item Create documentation that covers the basic functionality of the language
-            \item Possibly bootstrap the compiler here
-        \end{enumerate}
-    \item \textbf{Week 12}
-        \begin{enumerate}
-            \item Implement a LLVM backed compiler
-            \item definitely bootstrap the compiler here
-        \end{enumerate}
+\item
+  \textbf{Week 4}
+
+  \begin{enumerate}
+  \item
+    Outline the design goals of the language
+  \item
+    Have a concrete definition of syntax
+  \item
+    Implement a prototype lexer and parser
+  \end{enumerate}
+
+\item
+  \textbf{Week 8}
+
+  \begin{enumerate}
+  \item
+    Implement a C transpiler written in rust
+  \item
+    Create documentation that covers the basic functionality of the language
+  \item
+    Possibly bootstrap the compiler here
+  \end{enumerate}
+
+\item
+  \textbf{Week 12}
+
+  \begin{enumerate}
+  \item
+    Implement a LLVM backed compiler
+  \item
+    Definitely bootstrap the compiler here
+  \end{enumerate}
 \end{enumerate}
 \end{document}
