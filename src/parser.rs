@@ -10,7 +10,7 @@ pub enum Expression {
     Integer(u64),
     BinaryOperation(Operator, Box<Expression>, Box<Expression>),
     UnaryOperation(Operator, Box<Expression>),
-    // Block(Vec<Expression>),
+    Sequence(Vec<Expression>),
 }
 
 pub struct Parser {
@@ -23,7 +23,7 @@ impl Parser {
     pub fn new(program: Vec<u8>) -> Self {
         let mut precedence_lookup = HashMap::new();
 
-        // precedence_lookup.insert(Operator::Semicolon, 3);
+        precedence_lookup.insert(Operator::Semicolon, 3);
         precedence_lookup.insert(Operator::Plus, 2);
         precedence_lookup.insert(Operator::Minus, 2);
         precedence_lookup.insert(Operator::Asterisk, 1);
@@ -48,15 +48,30 @@ impl Parser {
 
         let mut expr = self.binary_operation(precedence - 1)?;
 
+        // create a list of statements if we are at semicolon level
+        if precedence
+            == *self
+                .precedence_lookup
+                .get(&Operator::Semicolon)
+                .expect("Semicolon missing from precedences")
+        {
+            expr = Expression::Sequence(vec![expr]);
+        }
+
         while let Lexeme::Operator(op) = self.token {
             if let Some(&op_precedence) = self.precedence_lookup.get(&op) {
                 if op_precedence == precedence {
                     self.advance()?;
-                    expr = Expression::BinaryOperation(
-                        op,
-                        Box::new(expr),
-                        Box::new(self.binary_operation(precedence - 1)?),
-                    );
+                    if let Expression::Sequence(expr_seq) = &mut expr {
+                        expr_seq.push(self.binary_operation(precedence - 1)?); //todo handle EOF
+                                                                               //here
+                    } else {
+                        expr = Expression::BinaryOperation(
+                            op,
+                            Box::new(expr),
+                            Box::new(self.binary_operation(precedence - 1)?),
+                        );
+                    }
                 } else {
                     break;
                 }
@@ -93,7 +108,10 @@ impl Parser {
                 }
             }
 
-            _ => Err(ErrorType::ParseError("Expected term".to_string())),
+            _ => Err(ErrorType::ParseError(format!(
+                "Expected term, recieved {:?}",
+                self.token
+            ))),
         }
     }
 

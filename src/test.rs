@@ -53,4 +53,7 @@ fn add_mul(){
     lex_file(filename);
     parse_file(filename);
     compile_file(filename);
+
+    let filename = "sequence.mud";
+    compile_file(filename);
 }

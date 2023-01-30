@@ -9,7 +9,7 @@ pub enum Operator {
     Plus,
     Minus,
     Asterisk,
-    // Semicolon,
+    Semicolon,
 
     OpenParenthesis,
     CloseParenthesis,
@@ -41,6 +41,8 @@ impl Lexer {
         operator_map.insert("*".to_string(), Operator::Asterisk);
         operator_map.insert("(".to_string(), Operator::OpenParenthesis);
         operator_map.insert(")".to_string(), Operator::CloseParenthesis);
+
+        operator_map.insert(";".to_string(), Operator::Semicolon);
 
         for op in operator_map.keys() {
             for c in op.bytes() {

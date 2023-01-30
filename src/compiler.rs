@@ -16,6 +16,7 @@ fn op_to_str(op: Operator) -> String{
         Operator::Asterisk => "*",
         Operator::OpenParenthesis => "(",
         Operator::CloseParenthesis=> ")",
+        Operator::Semicolon=> ";",
     }.to_string()
 }
 
@@ -29,6 +30,14 @@ fn convert(expression: Expression) -> String{
         },
         Expression::BinaryOperation(op, expr1, expr2) => {
             "(".to_string() + &convert(*expr1) + &op_to_str(op) + &convert(*expr2) + ")"
+        },
+        Expression::Sequence(lines) => {
+            let mut acc = String::new();
+            for line in lines {
+                acc += &convert(line);
+                acc += "\n";
+            }
+            acc
         }
     }
 }
