@@ -9,6 +9,7 @@ pub enum Operator {
     Plus,
     Minus,
     Asterisk,
+    // Semicolon,
 
     OpenParenthesis,
     CloseParenthesis,
@@ -18,6 +19,7 @@ pub enum Operator {
 pub enum Lexeme {
     Integer(u64),
     Operator(Operator),
+    // Semicolon,
     Eof,
 }
 
