@@ -13,3 +13,4 @@
 
 # Source testing
 *.mud
+!/mud_tests/*.mud

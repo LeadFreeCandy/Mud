@@ -4,6 +4,10 @@ use std::env;
 mod lexing;
 mod parser;
 mod errors;
+
+#[cfg(test)]
+mod test;
+
 use lexing::*;
 use errors::ParseResult;
 
