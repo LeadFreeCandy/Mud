@@ -20,6 +20,7 @@ impl Parser {
         let mut precedence_lookup = HashMap::new();
 
         precedence_lookup.insert(Operator::Addition, 2);
+        precedence_lookup.insert(Operator::Subtraction, 2);
         precedence_lookup.insert(Operator::Multiplication, 1);
 
         Self { 
@@ -61,6 +62,11 @@ impl Parser {
             Lexeme::Integer(i) => {
                 self.advance()?;
                 Ok(Expression::Integer(i))
+            }
+
+            Lexeme::Operator(Operator::Subtraction) => {
+                self.advance()?;
+                Ok(Expression::UnaryOperation(Operator::Subtraction, Box::new(self.term()?)))
             }
 
             _ => Err(ErrorType::ParseError("Expected term".to_string()))

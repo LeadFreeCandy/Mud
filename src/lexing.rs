@@ -5,6 +5,7 @@ use crate::errors::{ParseResult, ErrorType};
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Operator {
     Addition,
+    Subtraction,
     Multiplication,
 }
 
@@ -29,6 +30,7 @@ impl Lexer {
         let mut operators = [false; 256];
 
         operator_map.insert("+".to_string(), Operator::Addition);
+        operator_map.insert("-".to_string(), Operator::Subtraction);
         operator_map.insert("*".to_string(), Operator::Multiplication);
 
         for op in operator_map.keys() {
