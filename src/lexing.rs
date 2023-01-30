@@ -9,7 +9,7 @@ pub enum Operator {
 }
 
 #[derive(Debug)]
-pub enum Token {
+pub enum Lexeme {
     Integer(u64),
     Operator(Operator),
     Eof,
@@ -46,7 +46,7 @@ impl Lexer {
          }
     }
 
-    pub fn next(&mut self) -> ParseResult<Token> {
+    pub fn next(&mut self) -> ParseResult<Lexeme> {
         while self.peek().is_ascii_whitespace() {
             self.index += 1;
         }
@@ -54,12 +54,12 @@ impl Lexer {
         match self.peek() {
             c if c.is_ascii_digit() => self.integer(),
             c if self.operators[c as usize] => self.operator(),
-            0 => Ok(Token::Eof),
+            0 => Ok(Lexeme::Eof),
             _ => Err(ErrorType::LexError("Invalid character".to_string()))
         }
     }
 
-    fn integer(&mut self) -> ParseResult<Token> {
+    fn integer(&mut self) -> ParseResult<Lexeme> {
         let mut int: u64 = 0;
 
         while self.peek().is_ascii_digit() {
@@ -70,10 +70,10 @@ impl Lexer {
             self.index += 1;
         }
 
-        Ok(Token::Integer(int))
+        Ok(Lexeme::Integer(int))
     }
 
-    fn operator(&mut self) -> ParseResult<Token> {
+    fn operator(&mut self) -> ParseResult<Lexeme> {
         let mut op_string = String::new();
 
         let mut largest_op = None;
@@ -92,7 +92,7 @@ impl Lexer {
 
         self.index = op_last_index + 1;
         
-        Ok(Token::Operator(largest_op.ok_or(ErrorType::LexError("Invalid operator".to_string()))?))
+        Ok(Lexeme::Operator(largest_op.ok_or(ErrorType::LexError("Invalid operator".to_string()))?))
     }
 
     fn peek(&mut self) -> u8 {

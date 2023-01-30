@@ -1,6 +1,6 @@
-use std::{string::ParseError, collections::HashMap};
+use std::collections::HashMap;
 
-use crate::{lexing::{Operator, Lexer, Token}, errors::{ParseResult, ErrorType}};
+use crate::{lexing::{Operator, Lexer, Lexeme}, errors::{ParseResult, ErrorType}};
 
 #[derive(Debug)]
 pub enum Expression {
@@ -11,7 +11,7 @@ pub enum Expression {
 
 pub struct Parser {
     lexer: Lexer,
-    token: Token,
+    token: Lexeme,
     precedence_lookup: HashMap<Operator, u8>,
 }
 
@@ -24,7 +24,7 @@ impl Parser {
 
         Self { 
             lexer: Lexer::new(program),
-            token: Token::Eof,
+            token: Lexeme::Eof,
             precedence_lookup,
         }
     }
@@ -42,7 +42,7 @@ impl Parser {
 
         let mut expr = self.binary_operation(precedence - 1)?;
 
-        while let Token::Operator(op) = self.token {
+        while let Lexeme::Operator(op) = self.token {
             if *self.precedence_lookup.get(&op).ok_or(ErrorType::ParseError("Invalid Operator".to_string()))? == precedence {
                 self.advance()?;
                 expr = Expression::BinaryOperation(op, Box::new(expr), Box::new(self.binary_operation(precedence - 1)?));
@@ -58,7 +58,7 @@ impl Parser {
     fn term(&mut self) -> ParseResult<Expression> {
 
         match self.token {
-            Token::Integer(i) => {
+            Lexeme::Integer(i) => {
                 self.advance()?;
                 Ok(Expression::Integer(i))
             }
