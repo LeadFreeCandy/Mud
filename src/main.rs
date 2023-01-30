@@ -1,15 +1,12 @@
 use std::fs;
 use std::env;
 
-mod lexing;
-mod parser;
-mod errors;
-
 #[cfg(test)]
 mod test;
+mod lexer;
+mod parser;
+mod compiler;
 
-use lexing::*;
-use errors::ParseResult;
 
 use crate::parser::Parser;
 

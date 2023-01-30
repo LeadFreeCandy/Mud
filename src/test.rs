@@ -1,3 +1,4 @@
+use crate::lexer::{Lexer, Lexeme};
 use crate::*;
 
 fn parse_file(input_filename: &str){
@@ -24,7 +25,6 @@ fn lex_files(input_filename: &str){
         }
     }
 }
-
 
 
 #[test]

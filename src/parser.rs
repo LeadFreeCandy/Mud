@@ -1,6 +1,7 @@
 use std::{collections::HashMap, string::ParseError};
 
-use crate::{lexing::{Operator, Lexer, Lexeme}, errors::{ParseResult, ErrorType}};
+use crate::lexer::{Operator, Lexer, Lexeme};
+use crate::lexer::error::{ParseResult, ErrorType};
 
 #[derive(Debug)]
 pub enum Expression {

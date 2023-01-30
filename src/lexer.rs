@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
-use crate::errors::{ParseResult, ErrorType};
+pub mod error;
+use error::{ParseResult, ErrorType};
+// use crate::errors::{ParseResult, ErrorType};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Operator {
