@@ -1,6 +1,6 @@
 use std::{collections::HashMap, string::ParseError};
 
-use crate::lexer::{Operator, Lexer, Lexeme};
+pub use crate::lexer::{Operator, Lexer, Lexeme};
 use crate::lexer::error::{ParseResult, ErrorType};
 
 #[derive(Debug)]
