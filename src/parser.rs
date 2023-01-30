@@ -19,9 +19,9 @@ impl Parser {
     pub fn new(program: Vec<u8>) -> Self {
         let mut precedence_lookup = HashMap::new();
 
-        precedence_lookup.insert(Operator::Addition, 2);
-        precedence_lookup.insert(Operator::Subtraction, 2);
-        precedence_lookup.insert(Operator::Multiplication, 1);
+        precedence_lookup.insert(Operator::Plus, 2);
+        precedence_lookup.insert(Operator::Minus, 2);
+        precedence_lookup.insert(Operator::Asterisk, 1);
 
         Self {
             lexer: Lexer::new(program),
@@ -65,9 +65,9 @@ impl Parser {
                 Ok(Expression::Integer(i))
             }
 
-            Lexeme::Operator(Operator::Subtraction) => {
+            Lexeme::Operator(Operator::Minus) => {
                 self.advance()?;
-                Ok(Expression::UnaryOperation(Operator::Subtraction, Box::new(self.term()?)))
+                Ok(Expression::UnaryOperation(Operator::Minus, Box::new(self.term()?)))
             }
 
             Lexeme::Operator(Operator::OpenParenthesis) => {
