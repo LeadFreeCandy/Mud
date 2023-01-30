@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, string::ParseError};
 
 use crate::{lexing::{Operator, Lexer, Lexeme}, errors::{ParseResult, ErrorType}};
 
@@ -23,7 +23,7 @@ impl Parser {
         precedence_lookup.insert(Operator::Subtraction, 2);
         precedence_lookup.insert(Operator::Multiplication, 1);
 
-        Self { 
+        Self {
             lexer: Lexer::new(program),
             token: Lexeme::Eof,
             precedence_lookup,
@@ -44,13 +44,14 @@ impl Parser {
         let mut expr = self.binary_operation(precedence - 1)?;
 
         while let Lexeme::Operator(op) = self.token {
-            if *self.precedence_lookup.get(&op).ok_or(ErrorType::ParseError("Invalid Operator".to_string()))? == precedence {
-                self.advance()?;
-                expr = Expression::BinaryOperation(op, Box::new(expr), Box::new(self.binary_operation(precedence - 1)?));
+            if let Some(&op_precedence) = self.precedence_lookup.get(&op) {
+                if op_precedence == precedence {
+                    self.advance()?;
+                    expr = Expression::BinaryOperation(op, Box::new(expr), Box::new(self.binary_operation(precedence - 1)?));
+                }
             }
-            else {
-                break;
-            }
+
+            break;
         }
 
         Ok(expr)
@@ -67,6 +68,19 @@ impl Parser {
             Lexeme::Operator(Operator::Subtraction) => {
                 self.advance()?;
                 Ok(Expression::UnaryOperation(Operator::Subtraction, Box::new(self.term()?)))
+            }
+
+            Lexeme::Operator(Operator::OpenParenthesis) => {
+                self.advance()?;
+                let expr = self.binary_operation(2)?;
+
+                if let Lexeme::Operator(Operator::CloseParenthesis) = self.token {
+                    self.advance()?;
+                    Ok(expr)
+                }
+                else {
+                    Err(ErrorType::ParseError("Unclosed parenthesis".to_string()))
+                }
             }
 
             _ => Err(ErrorType::ParseError("Expected term".to_string()))

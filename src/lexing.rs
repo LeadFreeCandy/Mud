@@ -7,6 +7,9 @@ pub enum Operator {
     Addition,
     Subtraction,
     Multiplication,
+
+    OpenParenthesis,
+    CloseParenthesis,
 }
 
 #[derive(Debug)]
@@ -21,7 +24,7 @@ pub struct Lexer {
     index: usize,
 
     operator_map: HashMap<String, Operator>, // NOTE: Maybe change these lookup methods
-    operators: [bool; 256], 
+    operators: [bool; 256],
 }
 
 impl Lexer {
@@ -32,6 +35,8 @@ impl Lexer {
         operator_map.insert("+".to_string(), Operator::Addition);
         operator_map.insert("-".to_string(), Operator::Subtraction);
         operator_map.insert("*".to_string(), Operator::Multiplication);
+        operator_map.insert("(".to_string(), Operator::OpenParenthesis);
+        operator_map.insert(")".to_string(), Operator::CloseParenthesis);
 
         for op in operator_map.keys() {
             for c in op.bytes() {
@@ -39,8 +44,8 @@ impl Lexer {
             }
         }
 
-        Self { 
-            program, 
+        Self {
+            program,
             index: 0,
 
             operator_map,
@@ -93,8 +98,8 @@ impl Lexer {
         }
 
         self.index = op_last_index + 1;
-        
-        Ok(Lexeme::Operator(largest_op.ok_or(ErrorType::LexError("Invalid operator".to_string()))?))
+
+        Ok(Lexeme::Operator(largest_op.ok_or(ErrorType::LexError(format!("Invalid operator {}", op_string)))?))
     }
 
     fn peek(&mut self) -> u8 {
