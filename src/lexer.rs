@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 pub mod error;
-use error::{ParseResult, ErrorType};
+use error::{MudResult, ErrorType};
 // use crate::errors::{ParseResult, ErrorType};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
@@ -59,7 +59,7 @@ impl Lexer {
          }
     }
 
-    pub fn next(&mut self) -> ParseResult<Lexeme> {
+    pub fn next(&mut self) -> MudResult<Lexeme> {
         while self.peek().is_ascii_whitespace() {
             self.index += 1;
         }
@@ -72,7 +72,7 @@ impl Lexer {
         }
     }
 
-    fn integer(&mut self) -> ParseResult<Lexeme> {
+    fn integer(&mut self) -> MudResult<Lexeme> {
         let mut int: u64 = 0;
 
         while self.peek().is_ascii_digit() {
@@ -86,7 +86,7 @@ impl Lexer {
         Ok(Lexeme::Integer(int))
     }
 
-    fn operator(&mut self) -> ParseResult<Lexeme> {
+    fn operator(&mut self) -> MudResult<Lexeme> {
         let mut op_string = String::new();
 
         let mut largest_op = None;

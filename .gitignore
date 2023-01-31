@@ -14,3 +14,6 @@
 # Source testing
 *.mud
 !/mud_tests/*.mud
+
+# Mud target
+/mud_tests/target/*

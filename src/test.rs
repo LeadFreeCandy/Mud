@@ -27,7 +27,6 @@ fn lex_file(input_filename: &str){
 }
 
 fn compile_file(input_filename: &str){
-    use std::fs::File;
     use std::io::prelude::*;
 
     let input_path = "mud_tests/".to_owned() + input_filename;

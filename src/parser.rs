@@ -1,16 +1,16 @@
-use std::{collections::HashMap, string::ParseError};
+use std::collections::HashMap;
 
-use crate::lexer::error::{ErrorType, ParseResult};
+use crate::lexer::error::{ErrorType, MudResult};
 pub use crate::lexer::{Lexeme, Lexer, Operator};
 
 const MAX_PRECEDENCE: u8 = 3;
 
 #[derive(Debug)]
 pub enum Expression {
+    Null,
     Integer(u64),
     BinaryOperation(Operator, Box<Expression>, Box<Expression>),
     UnaryOperation(Operator, Box<Expression>),
-    Sequence(Vec<Expression>),
 }
 
 pub struct Parser {
@@ -35,43 +35,28 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> ParseResult<Expression> {
+    pub fn parse(&mut self) -> MudResult<Expression> {
         self.advance()?;
 
         self.binary_operation(MAX_PRECEDENCE)
     }
 
-    fn binary_operation(&mut self, precedence: u8) -> ParseResult<Expression> {
+    fn binary_operation(&mut self, precedence: u8) -> MudResult<Expression> {
         if precedence == 0 {
             return self.term();
         }
 
         let mut expr = self.binary_operation(precedence - 1)?;
 
-        // create a list of statements if we are at semicolon level
-        if precedence
-            == *self
-                .precedence_lookup
-                .get(&Operator::Semicolon)
-                .expect("Semicolon missing from precedences")
-        {
-            expr = Expression::Sequence(vec![expr]);
-        }
-
         while let Lexeme::Operator(op) = self.token {
             if let Some(&op_precedence) = self.precedence_lookup.get(&op) {
                 if op_precedence == precedence {
                     self.advance()?;
-                    if let Expression::Sequence(expr_seq) = &mut expr {
-                        expr_seq.push(self.binary_operation(precedence - 1)?); //todo handle EOF
-                                                                               //here
-                    } else {
-                        expr = Expression::BinaryOperation(
-                            op,
-                            Box::new(expr),
-                            Box::new(self.binary_operation(precedence - 1)?),
-                        );
-                    }
+                    expr = Expression::BinaryOperation(
+                        op,
+                        Box::new(expr),
+                        Box::new(self.binary_operation(precedence - 1)?),
+                    );
                 } else {
                     break;
                 }
@@ -81,7 +66,7 @@ impl Parser {
         Ok(expr)
     }
 
-    fn term(&mut self) -> ParseResult<Expression> {
+    fn term(&mut self) -> MudResult<Expression> {
         match self.token {
             Lexeme::Integer(i) => {
                 self.advance()?;
@@ -108,6 +93,8 @@ impl Parser {
                 }
             }
 
+            Lexeme::Eof => Ok(Expression::Null),
+
             _ => Err(ErrorType::ParseError(format!(
                 "Expected term, recieved {:?}",
                 self.token
@@ -115,7 +102,7 @@ impl Parser {
         }
     }
 
-    fn advance(&mut self) -> ParseResult<()> {
+    fn advance(&mut self) -> MudResult<()> {
         self.token = self.lexer.next()?;
         Ok(())
     }
