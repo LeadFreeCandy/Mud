@@ -9,6 +9,7 @@ const MAX_PRECEDENCE: u8 = 3;
 pub enum Expression {
     Null,
     Integer(u64),
+    Identifier(String),
     BinaryOperation(Operator, Box<Expression>, Box<Expression>),
     UnaryOperation(Operator, Box<Expression>),
 }
@@ -67,14 +68,16 @@ impl Parser {
     }
 
     fn term(&mut self) -> MudResult<Expression> {
-        match self.token {
+        match self.advance()? {
             Lexeme::Integer(i) => {
-                self.advance()?;
                 Ok(Expression::Integer(i))
             }
 
+            Lexeme::Identifier(s) => {
+                Ok(Expression::Identifier(s))
+            }
+
             Lexeme::Operator(Operator::Minus) => {
-                self.advance()?;
                 Ok(Expression::UnaryOperation(
                     Operator::Minus,
                     Box::new(self.term()?),
@@ -82,7 +85,6 @@ impl Parser {
             }
 
             Lexeme::Operator(Operator::OpenParenthesis) => {
-                self.advance()?;
                 let expr = self.binary_operation(MAX_PRECEDENCE)?;
 
                 if let Lexeme::Operator(Operator::CloseParenthesis) = self.token {
@@ -102,8 +104,7 @@ impl Parser {
         }
     }
 
-    fn advance(&mut self) -> MudResult<()> {
-        self.token = self.lexer.next()?;
-        Ok(())
+    fn advance(&mut self) -> MudResult<Lexeme> {
+        Ok(std::mem::replace(&mut self.token, self.lexer.next()?))
     }
 }

@@ -32,6 +32,9 @@ fn convert(expression: Expression) -> MudResult<String> {
         Expression::Integer(val) => {
             Ok(val.to_string())
         },
+        Expression::Identifier(s) => {
+            Ok(s)
+        }
         Expression::UnaryOperation(op, expr) => {
             unary_op_transpile(op, &convert(*expr)?)
         },

@@ -18,6 +18,7 @@ pub enum Operator {
 #[derive(Debug)]
 pub enum Lexeme {
     Integer(u64),
+    Identifier(String),
     Operator(Operator),
     // Semicolon,
     Eof,
@@ -66,6 +67,7 @@ impl Lexer {
 
         match self.peek() {
             c if c.is_ascii_digit() => self.integer(),
+            c if c.is_ascii_alphabetic() => self.identifier(),
             c if self.operators[c as usize] => self.operator(),
             0 => Ok(Lexeme::Eof),
             _ => Err(ErrorType::LexError("Invalid character".to_string()))
@@ -84,6 +86,19 @@ impl Lexer {
         }
 
         Ok(Lexeme::Integer(int))
+    }
+
+    fn identifier(&mut self) -> MudResult<Lexeme> {
+        let start = self.index;
+
+        while self.peek().is_ascii_alphanumeric() || self.peek() == b'_' {
+            self.index += 1;
+        }
+
+        match std::str::from_utf8(&self.program[start..self.index]) {
+            Ok(v) => Ok(Lexeme::Identifier(v.to_string())),
+            _ => Err(ErrorType::LexError("Identifier contained invalid bytes".to_string())),
+        }
     }
 
     fn operator(&mut self) -> MudResult<Lexeme> {
