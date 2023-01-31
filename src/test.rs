@@ -1,5 +1,6 @@
 use crate::lexer::{Lexeme, Lexer};
 use crate::*;
+use std::process::Command;
 
 fn parse_file(input_filename: &str) {
     let input_filename = "mud_tests/".to_owned() + input_filename;
@@ -19,7 +20,6 @@ fn lex_file(input_filename: &str) {
 
     loop {
         let token = lexer.next();
-        dbg!(&token);
         if let Ok(Lexeme::Eof) = token {
             break;
         }
@@ -33,12 +33,12 @@ fn compile_file(input_filename: &str) {
 
     let in_file = fs::read(&input_path).expect("Unable to open file!");
     // let mut lexer = Lexer::new(file);
-    let program = compiler::compile(in_file).expect(&format!("Error compiling {input_filename}!"));
+    let program =
+        compiler::compile_full(in_file).expect(&format!("Error compiling {input_filename}!"));
 
     let mut output_filename: String = input_filename.split(".").take(1).collect();
     output_filename += ".c";
 
-    dbg!(&output_filename);
     let mut out_file = fs::File::create("mud_tests/target/".to_string() + &output_filename)
         .expect("Unable to create file");
     out_file
@@ -47,6 +47,47 @@ fn compile_file(input_filename: &str) {
 
     // let target_filename = "mud_tests/truth/".to_string() + &output_filename;
     // let target_file = fs::read(target_filename);
+}
+
+fn compile_run_file(input_filename: &str, expected_output: &str) {
+    compile_file(input_filename);
+
+    let mut output_filename: String = input_filename.split(".").take(1).collect();
+    let output_filename_c = output_filename.clone() + ".c";
+
+    let output = Command::new("gcc")
+        .arg("mud_tests/target/".to_string() + &output_filename_c)
+        .arg("-o")
+        .arg("mud_tests/target/".to_string() + &output_filename + &".exe")
+        .output()
+        .expect("Failed to run compiler");
+
+    if !output.status.success(){
+        dbg!(&output.status);
+    }
+    // println!("command output: {}", String::from_utf8_lossy(&output.stdout));
+    println!("command error: {}", String::from_utf8_lossy(&output.stderr));
+    assert!(
+        output.status.success(),
+        "The transpiled code failed to compile"
+    );
+
+    let output = Command::new("./".to_string() + 
+                              &"mud_tests/target/" + &output_filename + &".exe")
+        .output()
+        .expect("Failed to run program");
+
+    if !output.status.success(){
+        dbg!(&output.status);
+    }
+
+    println!("command error: {}", String::from_utf8_lossy(&output.stderr));
+    println!("command output: {}", String::from_utf8_lossy(&output.stdout));
+
+    assert!(
+        output.status.success(),
+        "The transpiled code crashed"
+    );
 }
 
 #[test]
@@ -59,4 +100,10 @@ fn add_mul() {
 fn sequence() {
     let filename = "sequence.mud";
     compile_file(filename);
+}
+
+#[test]
+fn run_add_mul() {
+    let filename = "add_mul.mud";
+    compile_run_file(filename, "15");
 }
