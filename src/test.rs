@@ -20,6 +20,7 @@ fn lex_file(input_filename: &str) {
 
     loop {
         let token = lexer.next();
+        println!("{:?}", token);
         if let Ok(Lexeme::Eof) = token {
             break;
         }
@@ -66,7 +67,7 @@ fn compile_run_file(input_filename: &str, expected_output: &str) {
         dbg!(&output.status);
     }
     // println!("command output: {}", String::from_utf8_lossy(&output.stdout));
-    println!("command error: {}", String::from_utf8_lossy(&output.stderr));
+    println!("compiler error: {}", String::from_utf8_lossy(&output.stderr));
     assert!(
         output.status.success(),
         "The transpiled code failed to compile"
@@ -81,8 +82,8 @@ fn compile_run_file(input_filename: &str, expected_output: &str) {
         dbg!(&output.status);
     }
 
-    println!("command error: {}", String::from_utf8_lossy(&output.stderr));
-    println!("command output: {}", String::from_utf8_lossy(&output.stdout));
+    println!("run error: {}", String::from_utf8_lossy(&output.stderr));
+    println!("run output: {}", String::from_utf8_lossy(&output.stdout));
 
     assert!(
         output.status.success(),
@@ -103,6 +104,19 @@ fn sequence() {
 }
 
 #[test]
+fn identifiers(){
+    // parse_file("identifiers.mud");
+    compile_file("identifiers.mud");
+}
+
+#[test]
+fn assignment(){
+    lex_file("assignment.mud");
+    parse_file("assignment.mud");
+    compile_file("assignment.mud");
+}
+
+// #[test]
 fn run_add_mul() {
     let filename = "add_mul.mud";
     compile_run_file(filename, "15");

@@ -30,6 +30,8 @@ fn binary_op_transpile(op: Operator, lhs: &str, rhs: &str) -> MudResult<String> 
         Operator::Minus => Ok(format!("({lhs}-{rhs})")),
         Operator::Asterisk => Ok(format!("({lhs}*{rhs})")),
         Operator::Semicolon=> Ok(format!("{lhs};\n{rhs}")),
+        Operator::Colon=> Ok(format!("{rhs} {lhs}")),
+        Operator::Equals=> Ok(format!("{lhs} = {rhs}")),
 
         _ => Err(ErrorType::CompileError(format!("Binary operator {:?} cannot be transpiled", op))),
     }

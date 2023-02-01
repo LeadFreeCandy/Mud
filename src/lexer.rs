@@ -9,8 +9,9 @@ pub enum Operator {
     Plus,
     Minus,
     Asterisk,
+    Equals,
+    Colon,
     Semicolon,
-
     OpenParenthesis,
     CloseParenthesis,
 }
@@ -20,7 +21,6 @@ pub enum Lexeme {
     Integer(u64),
     Identifier(String),
     Operator(Operator),
-    // Semicolon,
     Eof,
 }
 
@@ -44,6 +44,8 @@ impl Lexer {
         operator_map.insert(")".to_string(), Operator::CloseParenthesis);
 
         operator_map.insert(";".to_string(), Operator::Semicolon);
+        operator_map.insert(":".to_string(), Operator::Colon);
+        operator_map.insert("=".to_string(), Operator::Equals);
 
         for op in operator_map.keys() {
             for c in op.bytes() {
