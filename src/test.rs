@@ -116,6 +116,12 @@ fn assignment(){
     compile_file("assignment.mud");
 }
 
+#[test]
+fn print(){
+    lex_file("print.mud");
+    compile_file("print.mud");
+}
+
 // #[test]
 fn run_add_mul() {
     let filename = "add_mul.mud";

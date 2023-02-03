@@ -6,11 +6,18 @@ use error::{MudResult, ErrorType};
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Operator {
+    //ops
     Plus,
     Minus,
     Asterisk,
+    LessThan,
+    GreaterThan,
+
+    //assignment
     Equals,
     Colon,
+
+    //delimiters
     Semicolon,
     OpenParenthesis,
     CloseParenthesis,
@@ -42,6 +49,9 @@ impl Lexer {
         operator_map.insert("*".to_string(), Operator::Asterisk);
         operator_map.insert("(".to_string(), Operator::OpenParenthesis);
         operator_map.insert(")".to_string(), Operator::CloseParenthesis);
+
+        operator_map.insert("<".to_string(), Operator::LessThan);
+        operator_map.insert(">".to_string(), Operator::GreaterThan);
 
         operator_map.insert(";".to_string(), Operator::Semicolon);
         operator_map.insert(":".to_string(), Operator::Colon);

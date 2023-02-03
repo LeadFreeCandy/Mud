@@ -40,6 +40,7 @@ fn binary_op_transpile(op: Operator, lhs: &str, rhs: &str) -> MudResult<String> 
 fn unary_op_transpile(op: Operator, oprand: &str) -> MudResult<String> {
     match op {
         Operator::Minus => Ok(format!("-({oprand})")),
+        Operator::LessThan => Ok(format!("printf(\"{{}}\", {oprand})")),
         _ => Err(ErrorType::CompileError(format!("Unary operator {:?} cannot be transpiled", op))),
     }
 }

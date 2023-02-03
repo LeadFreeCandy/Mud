@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::lexer::error::{ErrorType, MudResult};
 pub use crate::lexer::{Lexeme, Lexer, Operator};
 
-const MAX_PRECEDENCE: u8 = 4; //todo fix this !!
+const MAX_PRECEDENCE: u8 = 5; //todo fix this !!
 
 #[derive(Debug)]
 pub enum Expression {
@@ -24,10 +24,13 @@ impl Parser {
     pub fn new(program: Vec<u8>) -> Self {
         let mut precedence_lookup = HashMap::new();
 
-        precedence_lookup.insert(Operator::Semicolon, 4);
+        precedence_lookup.insert(Operator::Semicolon, 5);
 
-        precedence_lookup.insert(Operator::Equals, 3);
-        precedence_lookup.insert(Operator::Colon, 3);
+        precedence_lookup.insert(Operator::Equals, 4);
+        precedence_lookup.insert(Operator::Colon, 4);
+
+        precedence_lookup.insert(Operator::LessThan, 3);
+        precedence_lookup.insert(Operator::GreaterThan, 3);
 
         precedence_lookup.insert(Operator::Plus, 2);
         precedence_lookup.insert(Operator::Minus, 2);
@@ -81,9 +84,18 @@ impl Parser {
                 Ok(Expression::Identifier(s))
             }
 
+            //negate
             Lexeme::Operator(Operator::Minus) => {
                 Ok(Expression::UnaryOperation(
                     Operator::Minus,
+                    Box::new(self.term()?),
+                ))
+            }
+
+            //print
+            Lexeme::Operator(Operator::LessThan) => {
+                Ok(Expression::UnaryOperation(
+                    Operator::LessThan,
                     Box::new(self.term()?),
                 ))
             }
