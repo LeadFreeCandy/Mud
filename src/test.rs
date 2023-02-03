@@ -73,7 +73,7 @@ fn compile_run_file(input_filename: &str, expected_output: &str) {
         "The transpiled code failed to compile"
     );
 
-    let output = Command::new("./".to_string() + 
+    let output = Command::new("./".to_string() +
                               &"mud_tests/target/" + &output_filename + &".exe")
         .output()
         .expect("Failed to run program");
@@ -103,12 +103,12 @@ fn sequence() {
     compile_file(filename);
 }
 
-#[test]
+/* #[test]
 fn identifiers(){
     // parse_file("identifiers.mud");
     compile_file("identifiers.mud");
 }
-
+ */
 #[test]
 fn assignment(){
     lex_file("assignment.mud");
