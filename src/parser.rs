@@ -2,8 +2,9 @@ use std::collections::HashMap;
 
 use crate::lexer::error::{ErrorType, MudResult};
 pub use crate::lexer::{Lexeme, Lexer, Operator};
-
-const MAX_PRECEDENCE: u8 = 5; //todo fix this !!
+use once_cell::sync::Lazy; //todo figure out why it cannot be unsync
+                           
+// const MAX_PRECEDENCE: u8 = 5; //todo fix this !!
 
 #[derive(Debug)]
 pub enum Expression {
@@ -17,36 +18,43 @@ pub enum Expression {
 pub struct Parser {
     lexer: Lexer,
     token: Lexeme,
-    precedence_lookup: HashMap<Operator, u8>,
 }
+
+
+static PRECEDENCE_LOOKUP: Lazy<HashMap<Operator, u8>> = Lazy::new(|| {
+
+    let mut precedence_lookup = HashMap::new();
+
+    precedence_lookup.insert(Operator::Semicolon, 5);
+
+    precedence_lookup.insert(Operator::Equals, 4);
+    precedence_lookup.insert(Operator::Colon, 4);
+
+    precedence_lookup.insert(Operator::LessThan, 3);
+    precedence_lookup.insert(Operator::GreaterThan, 3);
+
+    precedence_lookup.insert(Operator::Plus, 2);
+    precedence_lookup.insert(Operator::Minus, 2);
+    precedence_lookup.insert(Operator::Asterisk, 1);
+    precedence_lookup
+});
+
+static MAX_PRECEDENCE: Lazy<u8> = Lazy::new(|| {
+    *PRECEDENCE_LOOKUP.values().max().unwrap()
+});
 
 impl Parser {
     pub fn new(program: Vec<u8>) -> Self {
-        let mut precedence_lookup = HashMap::new();
-
-        precedence_lookup.insert(Operator::Semicolon, 5);
-
-        precedence_lookup.insert(Operator::Equals, 4);
-        precedence_lookup.insert(Operator::Colon, 4);
-
-        precedence_lookup.insert(Operator::LessThan, 3);
-        precedence_lookup.insert(Operator::GreaterThan, 3);
-
-        precedence_lookup.insert(Operator::Plus, 2);
-        precedence_lookup.insert(Operator::Minus, 2);
-        precedence_lookup.insert(Operator::Asterisk, 1);
-
         Self {
             lexer: Lexer::new(program),
             token: Lexeme::Eof,
-            precedence_lookup,
         }
     }
 
     pub fn parse(&mut self) -> MudResult<Expression> {
         self.advance()?;
 
-        self.binary_operation(MAX_PRECEDENCE)
+        self.binary_operation(*MAX_PRECEDENCE)
     }
 
     fn binary_operation(&mut self, precedence: u8) -> MudResult<Expression> {
@@ -57,7 +65,7 @@ impl Parser {
         let mut expr = self.binary_operation(precedence - 1)?;
 
         while let Lexeme::Operator(op) = self.token {
-            if let Some(&op_precedence) = self.precedence_lookup.get(&op) {
+            if let Some(&op_precedence) = PRECEDENCE_LOOKUP.get(&op) {
                 if op_precedence == precedence {
                     self.advance()?;
                     expr = Expression::BinaryOperation(
@@ -101,7 +109,7 @@ impl Parser {
             }
 
             Lexeme::Operator(Operator::OpenParenthesis) => {
-                let expr = self.binary_operation(MAX_PRECEDENCE)?;
+                let expr = self.binary_operation(*MAX_PRECEDENCE)?;
 
                 if let Lexeme::Operator(Operator::CloseParenthesis) = self.token {
                     self.advance()?;

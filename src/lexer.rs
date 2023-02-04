@@ -4,6 +4,41 @@ pub mod error;
 use error::{MudResult, ErrorType};
 // use crate::errors::{ParseResult, ErrorType};
 
+use once_cell::sync::Lazy; //todo figure out why it cannot be unsync
+
+static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
+
+    let mut operator_map: HashMap<&'static str, Operator> = HashMap::new();
+    // let mut operators = [false; 256];
+
+    operator_map.insert("+", Operator::Plus);
+    operator_map.insert("-", Operator::Minus);
+    operator_map.insert("*", Operator::Asterisk);
+    operator_map.insert("(", Operator::OpenParenthesis);
+    operator_map.insert(")", Operator::CloseParenthesis);
+
+    operator_map.insert("<", Operator::LessThan);
+    operator_map.insert(">", Operator::GreaterThan);
+
+    operator_map.insert(";", Operator::Semicolon);
+    operator_map.insert(":", Operator::Colon);
+    operator_map.insert("=", Operator::Equals);
+    operator_map
+});
+
+static OP_CHARS: Lazy<[bool; 256]> = Lazy::new(||{
+
+    let mut operators = [false; 256];
+    for op in OPERATORS.keys() {
+        for c in op.bytes() {
+            operators[c as usize] = true;
+        }
+    }
+
+    operators
+});
+
+
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Operator {
     //ops
@@ -34,41 +69,14 @@ pub enum Lexeme {
 pub struct Lexer {
     program: Vec<u8>,
     index: usize,
-
-    operator_map: HashMap<String, Operator>, // NOTE: Maybe change these lookup methods
-    operators: [bool; 256],
 }
 
 impl Lexer {
     pub fn new(program: Vec<u8>) -> Self {
-        let mut operator_map = HashMap::new();
-        let mut operators = [false; 256];
-
-        operator_map.insert("+".to_string(), Operator::Plus);
-        operator_map.insert("-".to_string(), Operator::Minus);
-        operator_map.insert("*".to_string(), Operator::Asterisk);
-        operator_map.insert("(".to_string(), Operator::OpenParenthesis);
-        operator_map.insert(")".to_string(), Operator::CloseParenthesis);
-
-        operator_map.insert("<".to_string(), Operator::LessThan);
-        operator_map.insert(">".to_string(), Operator::GreaterThan);
-
-        operator_map.insert(";".to_string(), Operator::Semicolon);
-        operator_map.insert(":".to_string(), Operator::Colon);
-        operator_map.insert("=".to_string(), Operator::Equals);
-
-        for op in operator_map.keys() {
-            for c in op.bytes() {
-                operators[c as usize] = true;
-            }
-        }
 
         Self {
             program,
             index: 0,
-
-            operator_map,
-            operators,
          }
     }
 
@@ -80,7 +88,7 @@ impl Lexer {
         match self.peek() {
             c if c.is_ascii_digit() => self.integer(),
             c if c.is_ascii_alphabetic() => self.identifier(),
-            c if self.operators[c as usize] => self.operator(),
+            c if OP_CHARS[c as usize] => self.operator(),
             0 => Ok(Lexeme::Eof),
             _ => Err(ErrorType::LexError("Invalid character".to_string()))
         }
@@ -119,10 +127,10 @@ impl Lexer {
         let mut largest_op = None;
         let mut op_last_index = 0;
 
-        while self.operators[self.peek() as usize] {
+        while OP_CHARS[self.peek() as usize] {
             op_string.push(self.peek() as char);
 
-            if let Some(op) = self.operator_map.get(&op_string) {
+            if let Some(op) = (*OPERATORS).get(&op_string as &str) {
                 largest_op = Some(*op);
                 op_last_index = self.index;
             }
