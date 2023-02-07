@@ -2,16 +2,14 @@ use std::collections::HashMap;
 
 use crate::lexer::error::{ErrorType, MudResult};
 pub use crate::lexer::{Lexeme, Lexer, Operator};
-use once_cell::sync::Lazy; //todo figure out why it cannot be unsync
-                           
-// const MAX_PRECEDENCE: u8 = 5; //todo fix this !!
+use once_cell::sync::Lazy; // TODO: figure out why it cannot be unsync
 
 #[derive(Debug)]
 pub enum Expression {
     Null,
     Integer(u64),
     Identifier(String),
-    BinaryOperation(Operator, Box<Expression>, Box<Expression>),
+    BinaryOperation(Operator, Box<Expression>, Box<Expression>), // TODO: probably get rid of expression composition as a binary operation
     UnaryOperation(Operator, Box<Expression>),
 }
 

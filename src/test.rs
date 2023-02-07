@@ -3,6 +3,7 @@ use crate::*;
 use std::process::Command;
 
 fn parse_file(input_filename: &str) {
+    println!("HERE {}", input_filename);
     let input_filename = "mud_tests/".to_owned() + input_filename;
 
     let file = fs::read(input_filename).expect("Unable to open file!");
@@ -34,8 +35,9 @@ fn compile_file(input_filename: &str) {
 
     let in_file = fs::read(&input_path).expect("Unable to open file!");
     // let mut lexer = Lexer::new(file);
-    let program =
-        compiler::compile_full(in_file).expect(&format!("Error compiling {input_filename}!"));
+    let mut comp = compiler::Compiler::new();
+
+    let program = comp.compile_full(in_file).expect(&format!("Error compiling {input_filename}!"));
 
     let mut output_filename: String = input_filename.split(".").take(1).collect();
     output_filename += ".c";
