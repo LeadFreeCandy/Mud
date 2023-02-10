@@ -4,7 +4,7 @@ pub mod error;
 use error::{MudResult, ErrorType};
 // use crate::errors::{ParseResult, ErrorType};
 
-use once_cell::sync::Lazy; //todo figure out why it cannot be unsync
+use once_cell::sync::Lazy; // TODO: figure out why it cannot be unsync
 
 static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
 
@@ -16,6 +16,8 @@ static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
     operator_map.insert("*", Operator::Asterisk);
     operator_map.insert("(", Operator::OpenParenthesis);
     operator_map.insert(")", Operator::CloseParenthesis);
+    operator_map.insert("{", Operator::OpenBrace);
+    operator_map.insert("}", Operator::CloseBrace);
 
     operator_map.insert("<", Operator::LessThan);
     operator_map.insert(">", Operator::GreaterThan);
@@ -56,6 +58,9 @@ pub enum Operator {
     Semicolon,
     OpenParenthesis,
     CloseParenthesis,
+
+    OpenBrace,
+    CloseBrace,
 }
 
 #[derive(Debug)]

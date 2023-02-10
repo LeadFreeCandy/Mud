@@ -11,6 +11,7 @@ pub enum Expression {
     Identifier(String),
     BinaryOperation(Operator, Box<Expression>, Box<Expression>), // TODO: probably get rid of expression composition as a binary operation
     UnaryOperation(Operator, Box<Expression>),
+    Block(Box<Expression>),
 }
 
 pub struct Parser {
@@ -56,7 +57,6 @@ impl Parser {
     }
 
     fn binary_operation(&mut self, precedence: u8) -> MudResult<Expression> {
-        dbg!(precedence);
         if precedence == 0 {
             return self.term();
         }
@@ -85,7 +85,7 @@ impl Parser {
     }
 
     fn term(&mut self) -> MudResult<Expression> {
-        match dbg!(self.advance()?) {
+        match self.advance()? {
             Lexeme::Integer(i) => {
                 Ok(Expression::Integer(i))
             }
@@ -111,7 +111,6 @@ impl Parser {
             }
 
             Lexeme::Operator(Operator::OpenParenthesis) => {
-                dbg!();
                 let expr = self.binary_operation(*MAX_PRECEDENCE)?;
 
                 if let Lexeme::Operator(Operator::CloseParenthesis) = self.token {
@@ -119,6 +118,17 @@ impl Parser {
                     Ok(expr)
                 } else {
                     Err(ErrorType::ParseError("Unclosed parenthesis".to_string()))
+                }
+            }
+
+            Lexeme::Operator(Operator::OpenBrace) => {
+                let expr = self.binary_operation(*MAX_PRECEDENCE)?;
+
+                if let Lexeme::Operator(Operator::CloseBrace) = self.token {
+                    self.advance()?;
+                    Ok(Expression::Block(Box::new(expr)))
+                } else {
+                    Err(ErrorType::ParseError("Unclosed brace".to_string()))
                 }
             }
 

@@ -38,7 +38,7 @@ struct CompiledAtom {
 }
 
 pub struct Compiler {
-    globals: HashMap<String, ValueType>,
+    scope_stack: Vec<HashMap<String, ValueType>>,
 }
 
 impl CompiledAtom {
@@ -60,7 +60,7 @@ macro_rules! program_fmt {
 
 impl Compiler {
     pub fn new() -> Self {
-        Self { globals: HashMap::new() }
+        Self { scope_stack: vec![HashMap::new()] }
     }
 
     pub fn compile_full(&mut self, program: Vec<u8>) -> MudResult<Vec<u8>>{
@@ -103,6 +103,13 @@ impl Compiler {
         }
     }
 
+    fn block(&mut self, expression: Expression) -> MudResult<CompiledAtom> {
+        self.scope_stack.push(HashMap::new());
+        let atom = CompiledAtom { source: format!("{{\n{}\n}}", self.convert(expression)?.source), atom_type: Type { value: ValueType::Void, expr: ExprType::Expression } };
+        self.scope_stack.pop();
+        Ok(atom)
+    }
+
     fn convert(&mut self, expression: Expression) -> MudResult<CompiledAtom> {
         match expression {
             Expression::Integer(val) => {
@@ -116,6 +123,9 @@ impl Compiler {
             }
             Expression::BinaryOperation(op, lhs, rhs) => {
                 self.binary_op_transpile(op, *lhs, *rhs)
+            }
+            Expression::Block(expr) => {
+                self.block(*expr)
             }
             Expression::Null => Ok(CompiledAtom::new(String::new(), ValueType::Void, ExprType::Literal)),
         }
@@ -158,7 +168,7 @@ impl Compiler {
             (ExprType::Identifier, ExprType::Identifier) => {
                 let res = CompiledAtom::new(format!("{} {}", rhs.source, lhs.source), ValueType::Void, ExprType::Expression);
 
-                if self.globals.insert(lhs.source, ValueType::from_string(&rhs.source)?).is_some() {
+                if self.scope_stack.last_mut().unwrap().insert(lhs.source, ValueType::from_string(&rhs.source)?).is_some() {
                     return MudResult::Err(ErrorType::CompileError("Variable redelcaration".to_string()));
                 }
 
@@ -171,7 +181,7 @@ impl Compiler {
     fn assign(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
         match lhs.atom_type.expr {
             ExprType::Identifier => {
-                if *self.globals.get(&lhs.source).ok_or(ErrorType::CompileError("Undefined variable".to_string()))? != rhs.atom_type.value {
+                if self.resolve_type(&lhs)? != rhs.atom_type.value {
                     return MudResult::Err(ErrorType::CompileError("Wrong type".to_string()));
                 }
 
@@ -197,7 +207,15 @@ impl Compiler {
 
     fn resolve_type(&self, atom: &CompiledAtom) -> MudResult<ValueType> {
         match atom.atom_type.expr {
-            ExprType::Identifier => self.globals.get(&atom.source).ok_or(ErrorType::CompileError("Undefined variable".to_string())).copied(),
+            ExprType::Identifier => {
+                for scope in self.scope_stack.iter().rev() {
+                    if let Some(v) = scope.get(&atom.source) {
+                        return Ok(*v);
+                    }
+                }
+
+                Err(ErrorType::CompileError("Undefined variable".to_string()))
+            }
             _ => Ok(atom.atom_type.value),
         }
     }

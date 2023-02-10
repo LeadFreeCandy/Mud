@@ -3,7 +3,6 @@ use crate::*;
 use std::process::Command;
 
 fn parse_file(input_filename: &str) {
-    println!("HERE {}", input_filename);
     let input_filename = "mud_tests/".to_owned() + input_filename;
 
     let file = fs::read(input_filename).expect("Unable to open file!");
@@ -121,6 +120,12 @@ fn assignment(){
 fn print(){
     lex_file("print.mud");
     compile_file("print.mud");
+}
+
+#[test]
+fn scope(){
+    lex_file("scope.mud");
+    compile_file("scope.mud");
 }
 
 // #[test]
