@@ -56,6 +56,7 @@ impl Parser {
     }
 
     fn binary_operation(&mut self, precedence: u8) -> MudResult<Expression> {
+        dbg!(precedence);
         if precedence == 0 {
             return self.term();
         }
@@ -75,13 +76,16 @@ impl Parser {
                     break;
                 }
             }
+            else {
+                break;
+            }
         }
 
         Ok(expr)
     }
 
     fn term(&mut self) -> MudResult<Expression> {
-        match self.advance()? {
+        match dbg!(self.advance()?) {
             Lexeme::Integer(i) => {
                 Ok(Expression::Integer(i))
             }
@@ -107,6 +111,7 @@ impl Parser {
             }
 
             Lexeme::Operator(Operator::OpenParenthesis) => {
+                dbg!();
                 let expr = self.binary_operation(*MAX_PRECEDENCE)?;
 
                 if let Lexeme::Operator(Operator::CloseParenthesis) = self.token {
@@ -119,9 +124,9 @@ impl Parser {
 
             Lexeme::Eof => Ok(Expression::Null),
 
-            _ => Err(ErrorType::ParseError(format!(
+            t => Err(ErrorType::ParseError(format!(
                 "Expected term, recieved {:?}",
-                self.token
+                t
             ))),
         }
     }
