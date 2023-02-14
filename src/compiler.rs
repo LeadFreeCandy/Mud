@@ -117,6 +117,13 @@ impl Compiler {
         }})
     }
 
+    fn while_loop(&mut self, condition: Expression, body: Expression) -> MudResult<CompiledAtom> {
+        Ok(CompiledAtom {
+            source: format!("while ({}) {}", self.convert(condition)?.source, self.convert(body)?.source),
+            atom_type: Type { value: ValueType::Void, expr: ExprType::Expression
+        }})
+    }
+
     fn convert(&mut self, expression: Expression) -> MudResult<CompiledAtom> {
         match expression {
             Expression::Integer(val) => {
@@ -136,6 +143,9 @@ impl Compiler {
             }
             Expression::IfElse(condition, on_if, on_else) => {
                 self.if_else(*condition, *on_if, *on_else)
+            }
+            Expression::While(condition, body) => {
+                self.while_loop(*condition, *body)
             }
             Expression::Null => Ok(CompiledAtom::new(String::new(), ValueType::Void, ExprType::Literal)),
         }

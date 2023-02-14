@@ -33,6 +33,7 @@ static KEYWORDS: Lazy<HashMap<&'static str, Keyword>> = Lazy::new(|| {
 
     keyword_map.insert("if", Keyword::If);
     keyword_map.insert("else", Keyword::Else);
+    keyword_map.insert("while", Keyword::While);
 
     keyword_map
 });
@@ -76,6 +77,7 @@ pub enum Operator {
 pub enum Keyword {
     If,
     Else,
+    While,
 }
 
 #[derive(Debug)]

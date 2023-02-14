@@ -13,6 +13,7 @@ pub enum Expression {
     UnaryOperation(Operator, Box<Expression>),
     Block(Box<Expression>),
     IfElse(Box<Expression>, Box<Expression>, Box<Expression>),
+    While(Box<Expression>, Box<Expression>),
 }
 
 pub struct Parser {
@@ -66,22 +67,22 @@ impl Parser {
         self.binary_operation(*MAX_PRECEDENCE)
     }
 
-    fn ifelse(&mut self) -> MudResult<Expression> {
-        // assume `if` has already been consumed
-        fn is_block(expr: &Expression) -> bool {
-            if let Expression::Block(_) = expr {
-                return true;
-            }
-
-            return false;
+    fn is_block(expr: &Expression) -> bool {
+        if let Expression::Block(_) = expr {
+            return true;
         }
 
+        return false;
+    }
+
+    fn ifelse(&mut self) -> MudResult<Expression> {
+        // assume `if` has already been consumed
         fn is_if_or_block(expr: &Expression) -> bool {
             if let Expression::IfElse(..) = expr {
                 return true;
             }
 
-            return is_block(expr);
+            return Parser::is_block(expr);
         }
 
         let condition = self.expression()?;
@@ -95,10 +96,23 @@ impl Parser {
             Expression::Null
         };
 
-        if !is_block(&on_if) { return Err(ErrorType::ParseError("Expected block after `if`".to_string())); }
+        if !Self::is_block(&on_if) { return Err(ErrorType::ParseError("Expected block after `if`".to_string())); }
         if !is_if_or_block(&on_else) { return Err(ErrorType::ParseError("Expected block after `else`".to_string())); }
 
         Ok(Expression::IfElse(Box::new(condition), Box::new(on_if), Box::new(on_else)))
+    }
+
+    fn while_loop(&mut self) -> MudResult<Expression> {
+        // assume `while` has already been consumed
+
+        let condition = self.expression()?;
+        let body = self.expression()?;
+
+        dbg!(&body);
+
+        if !Self::is_block(&body) { return Err(ErrorType::ParseError("Expected block after `while`".to_string())); }
+
+        Ok(Expression::While(Box::new(condition), Box::new(body)))
     }
 
     fn binary_operation(&mut self, precedence: u8) -> MudResult<Expression> {
@@ -179,6 +193,10 @@ impl Parser {
 
             Lexeme::Keyword(Keyword::If) => {
                 self.ifelse()
+            }
+
+            Lexeme::Keyword(Keyword::While) => {
+                self.while_loop()
             }
 
             Lexeme::Eof => Ok(Expression::Null),

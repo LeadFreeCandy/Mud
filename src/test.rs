@@ -134,6 +134,13 @@ fn run_if_else() {
     compile_run_file(filename, "");
 }
 
+#[test]
+fn run_while() {
+    let filename = "while.mud";
+    compile_run_file(filename, "");
+}
+
+
 
 // #[test]
 fn run_add_mul() {
