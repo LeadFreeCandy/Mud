@@ -56,9 +56,9 @@ fn test_run(test_name: &str, expected_out: Option<&str>){
 
     println!("run error: {}", String::from_utf8_lossy(&output.stderr));
     println!("run output: {}", String::from_utf8_lossy(&output.stdout));
-
+    
     if let Some(expected_out) = expected_out{
-        assert!(expected_out == String::from_utf8_lossy(&output.stdout));
+        assert_eq!(expected_out, String::from_utf8_lossy(&output.stdout));
     }
 
     assert!(
@@ -111,13 +111,14 @@ fn scope(){
 #[test]
 fn run_if_else() {
     let filename = "if_else.mud";
-    compile_run_file(filename, "");
+    test_compile(filename);
 }
 
 #[test]
 fn run_while() {
     let filename = "while.mud";
-    compile_run_file(filename, "");
+    test_compile(filename);
+    test_run(filename, Some("109876543210"));
 }
 
 
