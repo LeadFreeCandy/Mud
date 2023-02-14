@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::lexer::error::{ErrorType, MudResult};
+use crate::lexer::{error::{ErrorType, MudResult}, Keyword};
 pub use crate::lexer::{Lexeme, Lexer, Operator};
 use once_cell::sync::Lazy; // TODO: figure out why it cannot be unsync
 
@@ -12,6 +12,7 @@ pub enum Expression {
     BinaryOperation(Operator, Box<Expression>, Box<Expression>), // TODO: probably get rid of expression composition as a binary operation
     UnaryOperation(Operator, Box<Expression>),
     Block(Box<Expression>),
+    IfElse(Box<Expression>, Box<Expression>, Box<Expression>),
 }
 
 pub struct Parser {
@@ -52,8 +53,46 @@ impl Parser {
 
     pub fn parse(&mut self) -> MudResult<Expression> {
         self.advance()?;
+        self.expression()
+    }
 
+    fn expression(&mut self) -> MudResult<Expression> {
         self.binary_operation(*MAX_PRECEDENCE)
+    }
+
+    fn ifelse(&mut self) -> MudResult<Expression> {
+        // assume `if` has already been consumed
+        fn is_block(expr: &Expression) -> bool {
+            if let Expression::Block(_) = expr {
+                return true;
+            }
+
+            return false;
+        }
+
+        fn is_if_or_block(expr: &Expression) -> bool {
+            if let Expression::IfElse(..) = expr {
+                return true;
+            }
+
+            return is_block(expr);
+        }
+
+        let condition = self.expression()?;
+        let on_if = self.expression()?;
+
+        let on_else = if let Lexeme::Keyword(crate::lexer::Keyword::Else) = self.token {
+            self.advance()?;
+            self.expression()?
+        }
+        else {
+            Expression::Null
+        };
+
+        if !is_block(&on_if) { return Err(ErrorType::ParseError("Expected block after `if`".to_string())); }
+        if !is_if_or_block(&on_else) { return Err(ErrorType::ParseError("Expected block after `else`".to_string())); }
+
+        Ok(Expression::IfElse(Box::new(condition), Box::new(on_if), Box::new(on_else)))
     }
 
     fn binary_operation(&mut self, precedence: u8) -> MudResult<Expression> {
@@ -111,7 +150,7 @@ impl Parser {
             }
 
             Lexeme::Operator(Operator::OpenParenthesis) => {
-                let expr = self.binary_operation(*MAX_PRECEDENCE)?;
+                let expr = self.expression()?;
 
                 if let Lexeme::Operator(Operator::CloseParenthesis) = self.token {
                     self.advance()?;
@@ -122,7 +161,7 @@ impl Parser {
             }
 
             Lexeme::Operator(Operator::OpenBrace) => {
-                let expr = self.binary_operation(*MAX_PRECEDENCE)?;
+                let expr = self.expression()?;
 
                 if let Lexeme::Operator(Operator::CloseBrace) = self.token {
                     self.advance()?;
@@ -130,6 +169,10 @@ impl Parser {
                 } else {
                     Err(ErrorType::ParseError("Unclosed brace".to_string()))
                 }
+            }
+
+            Lexeme::Keyword(Keyword::If) => {
+                self.ifelse()
             }
 
             Lexeme::Eof => Ok(Expression::Null),

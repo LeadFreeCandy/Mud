@@ -105,9 +105,16 @@ impl Compiler {
 
     fn block(&mut self, expression: Expression) -> MudResult<CompiledAtom> {
         self.scope_stack.push(HashMap::new());
-        let atom = CompiledAtom { source: format!("{{\n{}\n}}", self.convert(expression)?.source), atom_type: Type { value: ValueType::Void, expr: ExprType::Expression } };
+        let atom = CompiledAtom { source: format!("{{\n{};\n}}", self.convert(expression)?.source), atom_type: Type { value: ValueType::Void, expr: ExprType::Expression } };
         self.scope_stack.pop();
         Ok(atom)
+    }
+
+    fn if_else(&mut self, condition: Expression, on_if: Expression, on_else: Expression) -> MudResult<CompiledAtom> {
+        Ok(CompiledAtom {
+            source: format!("if ({}) {} else {}", self.convert(condition)?.source, self.convert(on_if)?.source, self.convert(on_else)?.source),
+            atom_type: Type { value: ValueType::Void, expr: ExprType::Expression
+        }})
     }
 
     fn convert(&mut self, expression: Expression) -> MudResult<CompiledAtom> {
@@ -126,6 +133,9 @@ impl Compiler {
             }
             Expression::Block(expr) => {
                 self.block(*expr)
+            }
+            Expression::IfElse(condition, on_if, on_else) => {
+                self.if_else(*condition, *on_if, *on_else)
             }
             Expression::Null => Ok(CompiledAtom::new(String::new(), ValueType::Void, ExprType::Literal)),
         }
@@ -201,7 +211,7 @@ impl Compiler {
     fn print(&self, oprand: CompiledAtom) -> MudResult<CompiledAtom> {
         match self.resolve_type(&oprand)? {
             ValueType::Integer => Ok(CompiledAtom::new(format!("printf(\"%d\", {})", oprand.source), ValueType::Void, ExprType::Expression)),
-            e => MudResult::Err(ErrorType::CompileError(format!("Cannot negate type {:?}", e))),
+            e => MudResult::Err(ErrorType::CompileError(format!("Cannot print type {:?}", e))),
         }
     }
 

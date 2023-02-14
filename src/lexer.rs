@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, hash_map::Entry};
 
 pub mod error;
 use error::{MudResult, ErrorType};
@@ -7,7 +7,6 @@ use error::{MudResult, ErrorType};
 use once_cell::sync::Lazy; // TODO: figure out why it cannot be unsync
 
 static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
-
     let mut operator_map: HashMap<&'static str, Operator> = HashMap::new();
     // let mut operators = [false; 256];
 
@@ -26,6 +25,16 @@ static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
     operator_map.insert(":", Operator::Colon);
     operator_map.insert("=", Operator::Equals);
     operator_map
+});
+
+static KEYWORDS: Lazy<HashMap<&'static str, Keyword>> = Lazy::new(|| {
+    let mut keyword_map: HashMap<&'static str, Keyword> = HashMap::new();
+    // let mut operators = [false; 256];
+
+    keyword_map.insert("if", Keyword::If);
+    keyword_map.insert("else", Keyword::Else);
+
+    keyword_map
 });
 
 static OP_CHARS: Lazy<[bool; 256]> = Lazy::new(||{
@@ -63,11 +72,18 @@ pub enum Operator {
     CloseBrace,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Keyword {
+    If,
+    Else,
+}
+
 #[derive(Debug)]
 pub enum Lexeme {
     Integer(u64),
     Identifier(String),
     Operator(Operator),
+    Keyword(Keyword),
     Eof,
 }
 
@@ -78,7 +94,6 @@ pub struct Lexer {
 
 impl Lexer {
     pub fn new(program: Vec<u8>) -> Self {
-
         Self {
             program,
             index: 0,
@@ -121,7 +136,10 @@ impl Lexer {
         }
 
         match std::str::from_utf8(&self.program[start..self.index]) {
-            Ok(v) => Ok(Lexeme::Identifier(v.to_string())),
+            Ok(v) => match KEYWORDS.get(v) {
+                Some(k) => Ok(Lexeme::Keyword(*k)),
+                None => Ok(Lexeme::Identifier(v.to_string()))
+            }
             _ => Err(ErrorType::LexError("Identifier contained invalid bytes".to_string())),
         }
     }

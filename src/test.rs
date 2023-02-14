@@ -128,6 +128,13 @@ fn scope(){
     compile_file("scope.mud");
 }
 
+#[test]
+fn run_if_else() {
+    let filename = "if_else.mud";
+    compile_run_file(filename, "");
+}
+
+
 // #[test]
 fn run_add_mul() {
     let filename = "add_mul.mud";
