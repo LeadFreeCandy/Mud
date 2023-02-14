@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, string::ParseError};
 
 use crate::lexer::{error::{ErrorType, MudResult}, Keyword};
 pub use crate::lexer::{Lexeme, Lexer, Operator};
@@ -53,7 +53,13 @@ impl Parser {
 
     pub fn parse(&mut self) -> MudResult<Expression> {
         self.advance()?;
-        self.expression()
+        let expr = self.expression();
+        if let Lexeme::Eof = self.token {
+            expr
+        }
+        else {
+            Err(ErrorType::ParseError("Expected EOF but got some token".to_string()))
+        }
     }
 
     fn expression(&mut self) -> MudResult<Expression> {
