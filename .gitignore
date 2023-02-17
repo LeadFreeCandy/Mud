@@ -21,3 +21,5 @@
 
 # Mud target
 /mud_tests/target/*
+
+.DS_Store
