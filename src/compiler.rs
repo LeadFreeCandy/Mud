@@ -6,6 +6,7 @@ use crate::lexer::error::{MudResult, ErrorType};
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum ValueType {
     Integer,
+    StringLiteral,
     Void,
     Unknown,
 }
@@ -132,6 +133,9 @@ impl Compiler {
             Expression::Identifier(s) => {
                 Ok(CompiledAtom::new(s, ValueType::Unknown, ExprType::Identifier))
             }
+            Expression::String(s) => {
+                Ok(CompiledAtom::new("\"".to_string() + &s + &"\"", ValueType::StringLiteral, ExprType::Literal))
+            }
             Expression::UnaryOperation(op, expr) => {
                 self.unary_op_transpile(op, *expr)
             }
@@ -221,6 +225,7 @@ impl Compiler {
     fn print(&self, oprand: CompiledAtom) -> MudResult<CompiledAtom> {
         match self.resolve_type(&oprand)? {
             ValueType::Integer => Ok(CompiledAtom::new(format!("printf(\"%d\", {})", oprand.source), ValueType::Void, ExprType::Expression)),
+            ValueType::StringLiteral => Ok(CompiledAtom::new(format!("printf(\"%s\", {})", oprand.source), ValueType::Void, ExprType::Expression)),
             e => MudResult::Err(ErrorType::CompileError(format!("Cannot print type {:?}", e))),
         }
     }

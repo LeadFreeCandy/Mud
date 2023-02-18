@@ -16,10 +16,8 @@
 *.mud
 *.exe
 *.c
-!/mud_tests/*.mud
-/mud_tests/*
 
-# Mud target
-/mud_tests/target/*
+/mud_tests/*
+!/mud_tests/*.mud
 
 .DS_Store

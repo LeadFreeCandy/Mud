@@ -121,10 +121,12 @@ fn run_while() {
     test_run(filename, Some("109876543210"));
 }
 
-
-
-// #[test]
-fn run_add_mul() {
-    let filename = "add_mul.mud";
-    transpile_file(filename);
+#[test]
+fn string_literal() {
+    let filename = "str_literal.mud";
+    lex_file(filename);
+    parse_file(filename);
+    //
+    test_run(filename, Some("test"));
 }
+
