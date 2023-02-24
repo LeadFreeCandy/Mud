@@ -4,7 +4,8 @@
   - [ ] pointers
     - [ ] deref
     - [ ] address of
-    - [ ] Update type system
+    - [ ] update type system
   - [ ] arrays
 - [ ] comments
 - [ ] global constants
+- [ ] get rid of the function composition

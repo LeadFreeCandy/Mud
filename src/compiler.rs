@@ -132,22 +132,23 @@ impl Compiler {
             Expression::Identifier(s) => {
                 Ok(CompiledAtom::new(s, ValueType::Unknown, ExprType::Identifier))
             }
-            Expression::UnaryOperation(op, expr) => {
+            Expression::UnaryOperation { op, oprand: expr } => {
                 self.unary_op_transpile(op, *expr)
             }
-            Expression::BinaryOperation(op, lhs, rhs) => {
+            Expression::BinaryOperation { op, lhs, rhs } => {
                 self.binary_op_transpile(op, *lhs, *rhs)
             }
             Expression::Block(expr) => {
                 self.block(*expr)
             }
-            Expression::IfElse(condition, on_if, on_else) => {
+            Expression::IfElse { condition, on_if, on_else } => {
                 self.if_else(*condition, *on_if, *on_else)
             }
-            Expression::While(condition, body) => {
+            Expression::While { condition, body } => {
                 self.while_loop(*condition, *body)
             }
             Expression::Null => Ok(CompiledAtom::new(String::new(), ValueType::Void, ExprType::Literal)),
+            _ => unreachable!() // TODO: REMOVE
         }
     }
 

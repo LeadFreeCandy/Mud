@@ -21,9 +21,9 @@ fn lex_file(input_filename: &str) {
     // println!("{:?}", parser.parse().unwrap());
 
     loop {
-        let token = lexer.next();
-        println!("{:?}", token);
-        if let Ok(Lexeme::Eof) = token {
+        let lexeme = lexer.next();
+        println!("{:?}", lexeme);
+        if let Ok(Lexeme::Eof) = lexeme {
             break;
         }
     }

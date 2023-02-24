@@ -24,6 +24,10 @@ static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
     operator_map.insert(";", Operator::Semicolon);
     operator_map.insert(":", Operator::Colon);
     operator_map.insert("=", Operator::Equals);
+
+    operator_map.insert("->", Operator::Arrow);
+    operator_map.insert(",", Operator::Comma);
+
     operator_map
 });
 
@@ -34,12 +38,12 @@ static KEYWORDS: Lazy<HashMap<&'static str, Keyword>> = Lazy::new(|| {
     keyword_map.insert("if", Keyword::If);
     keyword_map.insert("else", Keyword::Else);
     keyword_map.insert("while", Keyword::While);
+    keyword_map.insert("fn", Keyword::Function);
 
     keyword_map
 });
 
 static OP_CHARS: Lazy<[bool; 256]> = Lazy::new(||{
-
     let mut operators = [false; 256];
     for op in OPERATORS.keys() {
         for c in op.bytes() {
@@ -71,6 +75,9 @@ pub enum Operator {
 
     OpenBrace,
     CloseBrace,
+
+    Arrow,
+    Comma,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -78,6 +85,7 @@ pub enum Keyword {
     If,
     Else,
     While,
+    Function,
 }
 
 #[derive(Debug)]
