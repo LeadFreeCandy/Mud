@@ -1,0 +1,10 @@
+- [ ] functions
+- [ ] structs
+- [ ] pointer/arrays
+  - [ ] pointers
+    - [ ] deref
+    - [ ] address of
+    - [ ] Update type system
+  - [ ] arrays
+- [ ] comments
+- [ ] global constants

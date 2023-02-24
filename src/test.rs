@@ -56,7 +56,7 @@ fn test_run(test_name: &str, expected_out: Option<&str>){
 
     println!("run error: {}", String::from_utf8_lossy(&output.stderr));
     println!("run output: {}", String::from_utf8_lossy(&output.stdout));
-    
+
     if let Some(expected_out) = expected_out{
         assert_eq!(expected_out, String::from_utf8_lossy(&output.stdout));
     }
