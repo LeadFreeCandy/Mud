@@ -1,9 +1,9 @@
-a: int;
-b: int;
+a: i32;
+b: i32;
 {
-    c: int;
-    b: int;
+    c: i32;
+    b: i32;
     a = 23;
     b = 2
 };
-l: int
+l: i32

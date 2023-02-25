@@ -5,21 +5,22 @@ use crate::lexer::error::{MudResult, ErrorType};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ValueType {
-    Integer,
-    StringLiteral,
+    I32,
+    U8,
+    // StringLiteral,
     Void,
     Pointer(Box<ValueType>),
     Unknown,
 }
 
-impl ValueType {
-    fn from_string(str: &str) -> MudResult<Self> {
-        match str {
-            "int" => Ok(ValueType::Integer),
-            s => Err(ErrorType::CompileError(format!("Invalid type: {}", s)))
-        }
-    }
-}
+// impl ValueType {
+//     fn from_string(str: &str) -> MudResult<Self> {
+//         match str {
+//             "i32" => Ok(ValueType::Integer),
+//             s => Err(ErrorType::CompileError(format!("Invalid type: {}", s)))
+//         }
+//     }
+// }
 
 #[derive(Debug, Copy, Clone)]
 pub enum ExprType {
@@ -144,17 +145,20 @@ impl Compiler {
     fn convert(&mut self, expression: Expression) -> MudResult<CompiledAtom> {
         match expression {
             Expression::Integer(val) => {
-                Ok(CompiledAtom::new(val.to_string(), ValueType::Integer, ExprType::Literal))
+                Ok(CompiledAtom::new(val.to_string(), ValueType::I32, ExprType::Literal))
             }
             Expression::Identifier(s) => {
-                if s == "int" { //todo fix this placeholder
-                    Ok(CompiledAtom::new(s, ValueType::Unknown, ExprType::Type))
-                } else {
+                if s == "i32" { //todo fix this placeholder
+                    Ok(CompiledAtom::new("int".to_string(), ValueType::Unknown, ExprType::Type))
+                } else if s == "u8" {
+                    Ok(CompiledAtom::new("char".to_string(), ValueType::Unknown, ExprType::Type))
+                }
+                else {
                     Ok(CompiledAtom::new(s, ValueType::Unknown, ExprType::Identifier))
                 }
             }
             Expression::String(s) => {
-                Ok(CompiledAtom::new("\"".to_string() + &s + &"\"", ValueType::StringLiteral, ExprType::Literal))
+                Ok(CompiledAtom::new("\"".to_string() + &s + &"\"", ValueType::Pointer(Box::new(ValueType::U8)), ExprType::Literal))
             }
             Expression::UnaryOperation(op, expr) => {
                 self.unary_op_transpile(op, *expr)
@@ -177,28 +181,29 @@ impl Compiler {
 
     fn add(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
         match (self.resolve_type(&lhs)?, self.resolve_type(&rhs)?) {
-            (ValueType::Integer, ValueType::Integer) => Ok(CompiledAtom::new(format!("({}+{})", lhs.source, rhs.source), ValueType::Integer, ExprType::Expression)),
+            (ValueType::I32, ValueType::I32) => Ok(CompiledAtom::new(format!("({}+{})", lhs.source, rhs.source), ValueType::I32, ExprType::Expression)),
+            (ValueType::Pointer(inner), ValueType::I32) => Ok(CompiledAtom::new(format!("({}+{})", lhs.source, rhs.source), ValueType::Pointer(inner), ExprType::Expression)),
             (l, r) => MudResult::Err(ErrorType::CompileError(format!("Cannot add types {:?} and {:?}", l, r))),
         }
     }
 
     fn sub(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
         match (self.resolve_type(&lhs)?, self.resolve_type(&rhs)?) {
-            (ValueType::Integer, ValueType::Integer) => Ok(CompiledAtom::new(format!("({}-{})", lhs.source, rhs.source), ValueType::Integer, ExprType::Expression)),
+            (ValueType::I32, ValueType::I32) => Ok(CompiledAtom::new(format!("({}-{})", lhs.source, rhs.source), ValueType::I32, ExprType::Expression)),
             (l, r) => MudResult::Err(ErrorType::CompileError(format!("Cannot subtract types {:?} and {:?}", l, r))),
         }
     }
 
     fn mul(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
         match (self.resolve_type(&lhs)?, self.resolve_type(&rhs)?) {
-            (ValueType::Integer, ValueType::Integer) => Ok(CompiledAtom::new(format!("({}*{})", lhs.source, rhs.source), ValueType::Integer, ExprType::Expression)),
+            (ValueType::I32, ValueType::I32) => Ok(CompiledAtom::new(format!("({}*{})", lhs.source, rhs.source), ValueType::I32, ExprType::Expression)),
             (l, r) => MudResult::Err(ErrorType::CompileError(format!("Cannot multiply types {:?} and {:?}", l, r))),
         }
     }
 
     fn div(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
         match (self.resolve_type(&lhs)?, self.resolve_type(&rhs)?) {
-            (ValueType::Integer, ValueType::Integer) => Ok(CompiledAtom::new(format!("({}/{})", lhs.source, rhs.source), ValueType::Integer, ExprType::Expression)),
+            (ValueType::I32, ValueType::I32) => Ok(CompiledAtom::new(format!("({}/{})", lhs.source, rhs.source), ValueType::I32, ExprType::Expression)),
             (l, r) => MudResult::Err(ErrorType::CompileError(format!("Cannot divide types {:?} and {:?}", l, r))),
         }
     }
@@ -236,18 +241,18 @@ impl Compiler {
     fn assign(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
         match lhs.atom_type.expr {
             ExprType::Identifier => {
-                if self.resolve_type(&lhs)? != rhs.atom_type.value {
-                    return MudResult::Err(ErrorType::CompileError("Wrong type".to_string()));
-                }
+                // if self.resolve_type(&lhs)? != rhs.atom_type.value {
+                //     return MudResult::Err(ErrorType::CompileError("Wrong type".to_string()));
+                // }
 
                 Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
             }
             //todo fix this, this should check more things than just the type
             //This probably isn't full proof, and could lead to assigning invalid LHSs
             ExprType::Expression => {
-                if self.resolve_type(&lhs)? != rhs.atom_type.value {
-                    return MudResult::Err(ErrorType::CompileError("Wrong type".to_string()));
-                }
+                // if self.resolve_type(&lhs)? != rhs.atom_type.value {
+                //     return MudResult::Err(ErrorType::CompileError("Wrong type".to_string()));
+                // }
                 Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
             }
             e => {
@@ -258,7 +263,7 @@ impl Compiler {
 
     fn negate(&self, oprand: CompiledAtom) -> MudResult<CompiledAtom> {
         match self.resolve_type(&oprand)? {
-            ValueType::Integer => Ok(CompiledAtom::new(format!("(-{})", oprand.source), ValueType::Integer, ExprType::Expression)),
+            ValueType::I32 => Ok(CompiledAtom::new(format!("(-{})", oprand.source), ValueType::I32, ExprType::Expression)),
             e => MudResult::Err(ErrorType::CompileError(format!("Cannot negate type {:?}", e))),
         }
     }
@@ -290,8 +295,11 @@ impl Compiler {
 
     fn print(&self, oprand: CompiledAtom) -> MudResult<CompiledAtom> {
         match self.resolve_type(&oprand)? {
-            ValueType::Integer => Ok(CompiledAtom::new(format!("printf(\"%d\", {})", oprand.source), ValueType::Void, ExprType::Expression)),
-            ValueType::StringLiteral => Ok(CompiledAtom::new(format!("printf(\"%s\", {})", oprand.source), ValueType::Void, ExprType::Expression)),
+            ValueType::I32 => Ok(CompiledAtom::new(format!("printf(\"%d\", {})", oprand.source), ValueType::Void, ExprType::Expression)),
+            ValueType::U8 => Ok(CompiledAtom::new(format!("printf(\"%c\", {})", oprand.source), ValueType::Void, ExprType::Expression)),
+            //todo fix
+            ValueType::Pointer(inner) => Ok(CompiledAtom::new(format!("printf(\"%s\", {})", oprand.source), ValueType::Void, ExprType::Expression)),
+            // ValueType::StringLiteral => Ok(CompiledAtom::new(format!("printf(\"%s\", {})", oprand.source), ValueType::Void, ExprType::Expression)),
             e => MudResult::Err(ErrorType::CompileError(format!("Cannot print type {:?}", e))),
         }
     }
@@ -311,7 +319,10 @@ impl Compiler {
                 }
                 match &atom.source[..] {
                     "int" => {
-                        return Ok(ValueType::Integer)
+                        return Ok(ValueType::I32)
+                    }
+                    "char" => {
+                        return Ok(ValueType::U8)
                     }
                     &_ => todo!("add more types")
                 }

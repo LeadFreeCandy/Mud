@@ -125,7 +125,7 @@ fn string_literal() {
     let filename = "str_literal.mud";
     lex_file(filename);
     parse_file(filename);
-    test_run(filename, Some("test"));
+    test_run(filename, Some("testcatcat"));
 }
 
 
@@ -135,4 +135,10 @@ fn pointer(){
     lex_file(filename);
     parse_file(filename);
     test_run(filename, Some("67"));
+}
+
+#[test]
+fn char(){
+    let filename = "char.mud";
+    test_run(filename, Some("A"));
 }
