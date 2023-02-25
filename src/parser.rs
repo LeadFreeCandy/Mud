@@ -60,7 +60,7 @@ impl Parser {
             expr
         }
         else {
-            Err(ErrorType::ParseError("Expected EOF but got some token".to_string()))
+            Err(ErrorType::ParseError(format!("Expected EOF but got some token: {:?}", self.token).to_string()))
         }
     }
 
@@ -162,6 +162,22 @@ impl Parser {
             Lexeme::Operator(Operator::Minus) => {
                 Ok(Expression::UnaryOperation(
                     Operator::Minus,
+                    Box::new(self.term()?),
+                ))
+            }
+
+            //deref
+            Lexeme::Operator(Operator::Asterisk) => {
+                Ok(Expression::UnaryOperation(
+                    Operator::Asterisk,
+                    Box::new(self.term()?),
+                ))
+            }
+
+            //
+            Lexeme::Operator(Operator::Ampersand) => {
+                Ok(Expression::UnaryOperation(
+                    Operator::Ampersand,
                     Box::new(self.term()?),
                 ))
             }

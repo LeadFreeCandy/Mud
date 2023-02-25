@@ -15,6 +15,8 @@ pub enum Operator {
     LessThan,
     GreaterThan,
 
+    Ampersand,
+
     //assignment
     Equals,
     Colon,
@@ -42,6 +44,7 @@ static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
     operator_map.insert("+", Operator::Plus);
     operator_map.insert("-", Operator::Minus);
     operator_map.insert("*", Operator::Asterisk);
+    operator_map.insert("&", Operator::Ampersand);
     operator_map.insert("(", Operator::OpenParenthesis);
     operator_map.insert(")", Operator::CloseParenthesis);
     operator_map.insert("{", Operator::OpenBrace);

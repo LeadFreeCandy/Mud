@@ -83,10 +83,9 @@ fn sequence() {
 }
 
 // #[test]
-fn identifiers(){
-    // parse_file("identifiers.mud");
-    test_compile("identifiers.mud");
-}
+// fn identifiers(){
+//     test_compile("identifiers.mud");
+// }
 
 #[test]
 fn assignment(){
@@ -126,7 +125,14 @@ fn string_literal() {
     let filename = "str_literal.mud";
     lex_file(filename);
     parse_file(filename);
-    //
     test_run(filename, Some("test"));
 }
 
+
+#[test]
+fn pointer(){
+    let filename = "pointer.mud";
+    lex_file(filename);
+    parse_file(filename);
+    test_run(filename, Some("67"));
+}
