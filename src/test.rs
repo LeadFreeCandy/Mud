@@ -142,3 +142,10 @@ fn char(){
     let filename = "char.mud";
     test_run(filename, Some("A"));
 }
+
+#[test]
+fn comment(){
+    let filename = "comment.mud";
+    lex_file(filename);
+    test_run(filename, Some("print this\nand this\n"));
+}

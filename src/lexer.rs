@@ -50,8 +50,6 @@ static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
     operator_map.insert("{", Operator::OpenBrace);
     operator_map.insert("}", Operator::CloseBrace);
 
-    // operator_map.insert("\"", Operator::DoubleQuote);
-    // operator_map.insert("\'", Operator::SingleQuote);
 
     operator_map.insert("<", Operator::LessThan);
     operator_map.insert(">", Operator::GreaterThan);
@@ -115,15 +113,34 @@ impl Lexer {
             self.index += 1;
         }
 
+        if self.peek() == '#' as u8{
+            while self.peek() != '\n' as u8{
+                self.index += 1;
+            }
+
+            while self.peek().is_ascii_whitespace() {
+                self.index += 1;
+            }
+            return self.next();
+        }
+
+
+        // if self.peek() == '#' as u8{
+        //     while self.peek() != '\n' as u8{
+        //         self.index += 1;
+        //     }
+        // }
+
         match self.peek() {
             c if c.is_ascii_digit() => self.integer(),
             c if c.is_ascii_alphabetic() => self.identifier(),
             c if c as char == '"' => self.string_literal(),
             c if OP_CHARS[c as usize] => self.operator(),
             0 => Ok(Lexeme::Eof),
-            _ => Err(ErrorType::LexError("Invalid character".to_string()))
+            c => Err(ErrorType::LexError(format!("Invalid character: {}", c as char))),
         }
     }
+
 
     fn integer(&mut self) -> MudResult<Lexeme> {
         let mut int: u64 = 0;
