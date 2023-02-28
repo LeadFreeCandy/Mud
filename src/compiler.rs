@@ -241,18 +241,34 @@ impl Compiler {
     fn assign(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
         match lhs.atom_type.expr {
             ExprType::Identifier => {
-                // if self.resolve_type(&lhs)? != rhs.atom_type.value {
-                //     return MudResult::Err(ErrorType::CompileError("Wrong type".to_string()));
-                // }
+                let lhs_type = self.resolve_type(&lhs)?;
+                let rhs_type = rhs.atom_type.value;
+
+                if lhs_type == ValueType::U8 || lhs_type == ValueType::I32 && 
+                    rhs_type == ValueType::U8 || rhs_type == ValueType::I32 {
+                        return Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
+                    }
+
+                if lhs_type != rhs_type {
+                    return MudResult::Err(ErrorType::CompileError("Wrong type".to_string()));
+                }
 
                 Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
             }
             //todo fix this, this should check more things than just the type
             //This probably isn't full proof, and could lead to assigning invalid LHSs
             ExprType::Expression => {
-                // if self.resolve_type(&lhs)? != rhs.atom_type.value {
-                //     return MudResult::Err(ErrorType::CompileError("Wrong type".to_string()));
-                // }
+                let lhs_type = self.resolve_type(&lhs)?;
+                let rhs_type = rhs.atom_type.value;
+
+                if lhs_type == ValueType::U8 || lhs_type == ValueType::I32 && 
+                    rhs_type == ValueType::U8 || rhs_type == ValueType::I32 {
+                        return Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
+                    }
+
+                if lhs_type != rhs_type {
+                    return MudResult::Err(ErrorType::CompileError("Wrong type".to_string()));
+                }
                 Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
             }
             e => {
