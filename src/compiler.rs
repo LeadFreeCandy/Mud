@@ -13,15 +13,6 @@ pub enum ValueType {
     Unknown,
 }
 
-// impl ValueType {
-//     fn from_string(str: &str) -> MudResult<Self> {
-//         match str {
-//             "i32" => Ok(ValueType::Integer),
-//             s => Err(ErrorType::CompileError(format!("Invalid type: {}", s)))
-//         }
-//     }
-// }
-
 #[derive(Debug, Copy, Clone)]
 pub enum ExprType {
     Literal,
@@ -221,11 +212,6 @@ impl Compiler {
 
                 let rhs_type = self.find_type(&rhs);
                 dbg!(&rhs_type);
-                // let rhs_type = self.pointer(rhs.clone())?;
-                // dbg!(&rhs_type);
-                // if self.scope_stack.last_mut().unwrap().insert(lhs.source, rhs_type.atom_type.value).is_some() {
-                //     return MudResult::Err(ErrorType::CompileError("Variable redelcaration".to_string()));
-                // }
                 
                 if self.scope_stack.last_mut().unwrap().insert(lhs.source, rhs_type?).is_some() {
                     return MudResult::Err(ErrorType::CompileError("Variable redelcaration".to_string()));
@@ -255,8 +241,6 @@ impl Compiler {
 
                 Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
             }
-            //todo fix this, this should check more things than just the type
-            //This probably isn't full proof, and could lead to assigning invalid LHSs
             ExprType::Expression => {
                 let lhs_type = self.resolve_type(&lhs)?;
                 let rhs_type = rhs.atom_type.value;
