@@ -24,11 +24,11 @@ pub struct Parser {
 
 
 static PRECEDENCE_LOOKUP: Lazy<HashMap<Operator, u8>> = Lazy::new(|| {
-
     let mut precedence_lookup = HashMap::new();
 
     precedence_lookup.insert(Operator::Semicolon, 5);
 
+    precedence_lookup.insert(Operator::ColonEquals, 4);
     precedence_lookup.insert(Operator::Equals, 4);
     precedence_lookup.insert(Operator::Colon, 4);
 
@@ -127,14 +127,15 @@ impl Parser {
 
     fn function(&mut self) -> MudResult<Expression> {
         fn is_decl(expr: &Expression) -> bool {
-            if let Expression::BinaryOperation { op, rhs, .. } = expr {
-                if let Expression::Identifier(_) = **rhs {
+            if let Expression::BinaryOperation { op, lhs, .. } = expr {
+                if let Expression::Identifier(_) = **lhs {
                     return *op == Operator::Colon;
                 }
             }
 
             return false;
         }
+
         // assume `function` has already been consumed
 
         let mut args = Vec::new();

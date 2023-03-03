@@ -27,6 +27,7 @@ static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
 
     operator_map.insert("->", Operator::Arrow);
     operator_map.insert(",", Operator::Comma);
+    operator_map.insert(":=", Operator::ColonEquals);
 
     operator_map
 });
@@ -78,6 +79,7 @@ pub enum Operator {
 
     Arrow,
     Comma,
+    ColonEquals,
 }
 
 #[derive(Debug, Clone, Copy)]

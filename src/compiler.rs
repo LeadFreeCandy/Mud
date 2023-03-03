@@ -1,13 +1,15 @@
 use std::collections::HashMap;
+use std::thread::Scope;
 
 use crate::parser::*;
 use crate::lexer::error::{MudResult, ErrorType};
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ValueType {
     Integer,
     Void,
     Unknown,
+    Function { args: Vec<ValueType>, return_type: Box<ValueType> }
 }
 
 impl ValueType {
@@ -19,14 +21,14 @@ impl ValueType {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 pub enum ExprType {
     Literal,
+    FunctionLiteral { args: Vec<Expression>, return_type: Box<Expression>, body: Box<Expression> },
     Identifier,
     Expression,
 }
 
-#[derive(Clone)]
 pub struct  Type {
     value: ValueType,
     expr: ExprType,
@@ -110,6 +112,13 @@ impl Compiler {
         Ok(atom)
     }
 
+    fn supressed_block(&mut self, expression: Expression) -> MudResult<CompiledAtom> {
+        // scope has been created for us
+        let atom = CompiledAtom { source: format!("{{\n{};\n}}", self.convert(expression)?.source), atom_type: Type { value: ValueType::Void, expr: ExprType::Expression } };
+        self.scope_stack.pop();
+        Ok(atom)
+    }
+
     fn if_else(&mut self, condition: Expression, on_if: Expression, on_else: Expression) -> MudResult<CompiledAtom> {
         Ok(CompiledAtom {
             source: format!("if ({}) {} else {}", self.convert(condition)?.source, self.convert(on_if)?.source, self.convert(on_else)?.source),
@@ -122,6 +131,13 @@ impl Compiler {
             source: format!("while ({}) {}", self.convert(condition)?.source, self.convert(body)?.source),
             atom_type: Type { value: ValueType::Void, expr: ExprType::Expression
         }})
+    }
+
+    fn function(&mut self, args: Vec<Expression>, return_type: Box<Expression>, body: Box<Expression>) -> MudResult<CompiledAtom> {
+        Ok(CompiledAtom {
+            source: "_mud_uncompiled_function".to_string(),
+            atom_type: Type { value: ValueType::Unknown, expr: ExprType::FunctionLiteral { args, return_type, body } },
+        })
     }
 
     fn convert(&mut self, expression: Expression) -> MudResult<CompiledAtom> {
@@ -147,8 +163,10 @@ impl Compiler {
             Expression::While { condition, body } => {
                 self.while_loop(*condition, *body)
             }
+            Expression::Function { args, return_type, body } => {
+                self.function(args, return_type, body)
+            }
             Expression::Null => Ok(CompiledAtom::new(String::new(), ValueType::Void, ExprType::Literal)),
-            _ => unreachable!() // TODO: REMOVE
         }
     }
 
@@ -212,6 +230,58 @@ impl Compiler {
         }
     }
 
+    fn assign_func(&mut self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
+        fn resolve_args(args: Vec<Expression>, scope: &mut HashMap<String, ValueType>) -> MudResult<(Vec<String>, Vec<ValueType>)> {
+            let mut strs = Vec::new();
+            let mut types = Vec::new();
+
+            for arg in args {
+                if let Expression::BinaryOperation { op, lhs, rhs } = arg {
+                    if let (Operator::Colon, Expression::Identifier(ident), Expression::Identifier(typ)) = (op, *lhs, *rhs) {
+                        strs.push(format!("{typ} {ident}"));
+                        types.push(ValueType::from_string(&typ)?);
+                        scope.insert(ident, types.last().unwrap().clone());
+                        continue;
+                    }
+                }
+
+                return Err(ErrorType::CompileError("Malformed function arguments".to_string()));
+            }
+
+            Ok((strs, types))
+        }
+
+        fn resolve_return_type(return_type: Expression) -> MudResult<ValueType> {
+            if let Expression::Identifier(typ) = return_type {
+                ValueType::from_string(&typ)
+            }
+            else {
+                Err(ErrorType::CompileError("Invalid return type".to_string()))
+            }
+        }
+
+        if self.scope_stack.len() != 1 {
+            return MudResult::Err(ErrorType::CompileError("Functions are not allowed outside the top level".to_string()));
+        }
+
+        match (lhs.atom_type.expr, rhs.atom_type.expr) {
+            (ExprType::Identifier, ExprType::FunctionLiteral { args, return_type, body }) => {
+                let mut fn_scope = HashMap::new();
+                let (strs, types) = resolve_args(args, &mut fn_scope)?;
+                let f_type = ValueType::Function { args: types, return_type: Box::new(resolve_return_type(*return_type)?) };
+
+                if self.scope_stack.last_mut().unwrap().insert(lhs.source.clone(), f_type).is_some() {
+                    return MudResult::Err(ErrorType::CompileError("Function delcaration".to_string()));
+                }
+
+                self.scope_stack.push(fn_scope);
+
+                Ok(CompiledAtom::new(format!("{} {}({}){}",  lhs.source, ), ValueType::Void, ExprType::Expression))
+            }
+            e => MudResult::Err(ErrorType::CompileError(format!("Invalid lhs of assignment {:?}", e))),
+        }
+    }
+
     fn negate(&self, oprand: CompiledAtom) -> MudResult<CompiledAtom> {
         match self.resolve_type(&oprand)? {
             ValueType::Integer => Ok(CompiledAtom::new(format!("(-{})", oprand.source), ValueType::Integer, ExprType::Expression)),
@@ -231,13 +301,13 @@ impl Compiler {
             ExprType::Identifier => {
                 for scope in self.scope_stack.iter().rev() {
                     if let Some(v) = scope.get(&atom.source) {
-                        return Ok(*v);
+                        return Ok(v.clone());
                     }
                 }
 
                 Err(ErrorType::CompileError("Undefined variable".to_string()))
             }
-            _ => Ok(atom.atom_type.value),
+            _ => Ok(atom.atom_type.value.clone()),
         }
     }
 }
