@@ -115,6 +115,12 @@ fn run_if_else() {
 }
 
 #[test]
+fn run_functions() {
+    let filename = "functions.mud";
+    test_compile(filename);
+}
+
+#[test]
 fn run_while() {
     let filename = "while.mud";
     test_compile(filename);

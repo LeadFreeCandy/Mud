@@ -1,3 +1,4 @@
+main := fn() -> int {
 a: int;
 b: int;
 {
@@ -7,3 +8,4 @@ b: int;
     b = 2
 };
 l: int
+}

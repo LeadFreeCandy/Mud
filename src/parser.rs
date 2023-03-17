@@ -69,7 +69,7 @@ impl Parser {
             expr
         }
         else {
-            Err(ErrorType::ParseError("Expected EOF but got some lexeme".to_string()))
+            Err(ErrorType::ParseError(format!("Expected EOF but gote some lexeme {:?}", self.lexeme)))
         }
     }
 
@@ -242,6 +242,10 @@ impl Parser {
 
             Lexeme::Keyword(Keyword::While) => {
                 self.while_loop()
+            }
+
+            Lexeme::Keyword(Keyword::Function) => {
+                self.function()
             }
 
             Lexeme::Eof => Ok(Expression::Null),

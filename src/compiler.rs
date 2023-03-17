@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::thread::Scope;
 
 use crate::parser::*;
 use crate::lexer::error::{MudResult, ErrorType};
@@ -55,9 +54,7 @@ impl CompiledAtom {
 macro_rules! program_fmt {
     () => ("#include <stdio.h>\n\
             #include <stdlib.h>\n\
-            int main() {{\n\
-                {};\n\
-            }}");
+            {}");
 }
 
 impl Compiler {
@@ -90,6 +87,7 @@ impl Compiler {
             Operator::Semicolon => self.comp(lhs, rhs),
             Operator::Colon => self.decl(lhs, rhs),
             Operator::Equals=> self.assign(lhs, rhs),
+            Operator::ColonEquals=> self.assign_func(lhs, rhs),
 
             _ => Err(ErrorType::CompileError(format!("Binary operator {:?} cannot be transpiled", op))),
         }
@@ -266,17 +264,22 @@ impl Compiler {
 
         match (lhs.atom_type.expr, rhs.atom_type.expr) {
             (ExprType::Identifier, ExprType::FunctionLiteral { args, return_type, body }) => {
+                let return_type_string = match return_type.as_ref() {
+                    Expression::Identifier(s) => s.clone(),
+                    _ => unreachable!(),
+                };
+
                 let mut fn_scope = HashMap::new();
                 let (strs, types) = resolve_args(args, &mut fn_scope)?;
                 let f_type = ValueType::Function { args: types, return_type: Box::new(resolve_return_type(*return_type)?) };
 
                 if self.scope_stack.last_mut().unwrap().insert(lhs.source.clone(), f_type).is_some() {
-                    return MudResult::Err(ErrorType::CompileError("Function delcaration".to_string()));
+                    return MudResult::Err(ErrorType::CompileError("Function redelcaration".to_string()));
                 }
 
                 self.scope_stack.push(fn_scope);
 
-                Ok(CompiledAtom::new(format!("{} {}({}){}",  lhs.source, ), ValueType::Void, ExprType::Expression))
+                Ok(CompiledAtom::new(format!("{} {}({}){}", return_type_string, lhs.source, strs.join(", "), self.convert(*body)?.source), ValueType::Void, ExprType::Expression))
             }
             e => MudResult::Err(ErrorType::CompileError(format!("Invalid lhs of assignment {:?}", e))),
         }

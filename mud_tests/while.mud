@@ -1,3 +1,4 @@
+main := fn() -> int {
 a: int;
 a = 10;
 (while a {
@@ -5,3 +6,4 @@ a = 10;
     a=a-1
 });
 <a
+}

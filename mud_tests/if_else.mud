@@ -1,3 +1,4 @@
+main := fn() -> int {
 a : int;
 a = 1;
 b: int;
@@ -16,4 +17,5 @@ else if a {
 }
 else {
     b = 1
+}
 }
