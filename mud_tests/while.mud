@@ -1,4 +1,4 @@
-a: int;
+a: i32;
 a = 10;
 (while a {
     <a;

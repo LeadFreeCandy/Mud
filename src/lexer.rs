@@ -6,6 +6,37 @@ use error::{MudResult, ErrorType};
 
 use once_cell::sync::Lazy; // TODO: figure out why it cannot be unsync
 
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
+pub enum Operator {
+    //ops
+    Plus,
+    Minus,
+    Asterisk,
+    LessThan,
+    GreaterThan,
+
+    Ampersand,
+
+    //assignment
+    Equals,
+    Colon,
+
+    //delimiters
+    Semicolon,
+    OpenParenthesis,
+    CloseParenthesis,
+    OpenBrace,
+    CloseBrace,
+    // DoubleQuote,
+    // SingleQuote,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Keyword {
+    If,
+    Else,
+    While,
+}
 static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
     let mut operator_map: HashMap<&'static str, Operator> = HashMap::new();
     // let mut operators = [false; 256];
@@ -13,10 +44,12 @@ static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
     operator_map.insert("+", Operator::Plus);
     operator_map.insert("-", Operator::Minus);
     operator_map.insert("*", Operator::Asterisk);
+    operator_map.insert("&", Operator::Ampersand);
     operator_map.insert("(", Operator::OpenParenthesis);
     operator_map.insert(")", Operator::CloseParenthesis);
     operator_map.insert("{", Operator::OpenBrace);
     operator_map.insert("}", Operator::CloseBrace);
+
 
     operator_map.insert("<", Operator::LessThan);
     operator_map.insert(">", Operator::GreaterThan);
@@ -51,39 +84,12 @@ static OP_CHARS: Lazy<[bool; 256]> = Lazy::new(||{
 });
 
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-pub enum Operator {
-    //ops
-    Plus,
-    Minus,
-    Asterisk,
-    LessThan,
-    GreaterThan,
-
-    //assignment
-    Equals,
-    Colon,
-
-    //delimiters
-    Semicolon,
-    OpenParenthesis,
-    CloseParenthesis,
-
-    OpenBrace,
-    CloseBrace,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Keyword {
-    If,
-    Else,
-    While,
-}
 
 #[derive(Debug)]
 pub enum Lexeme {
     Integer(u64),
     Identifier(String),
+    String(String),
     Operator(Operator),
     Keyword(Keyword),
     Eof,
@@ -107,14 +113,34 @@ impl Lexer {
             self.index += 1;
         }
 
+        if self.peek() == '#' as u8{
+            while self.peek() != '\n' as u8{
+                self.index += 1;
+            }
+
+            while self.peek().is_ascii_whitespace() {
+                self.index += 1;
+            }
+            return self.next();
+        }
+
+
+        // if self.peek() == '#' as u8{
+        //     while self.peek() != '\n' as u8{
+        //         self.index += 1;
+        //     }
+        // }
+
         match self.peek() {
             c if c.is_ascii_digit() => self.integer(),
             c if c.is_ascii_alphabetic() => self.identifier(),
+            c if c as char == '"' => self.string_literal(),
             c if OP_CHARS[c as usize] => self.operator(),
             0 => Ok(Lexeme::Eof),
-            _ => Err(ErrorType::LexError("Invalid character".to_string()))
+            c => Err(ErrorType::LexError(format!("Invalid character: {}", c as char))),
         }
     }
+
 
     fn integer(&mut self) -> MudResult<Lexeme> {
         let mut int: u64 = 0;
@@ -144,6 +170,22 @@ impl Lexer {
             }
             _ => Err(ErrorType::LexError("Identifier contained invalid bytes".to_string())),
         }
+    }
+
+    fn string_literal(&mut self) -> MudResult<Lexeme>{
+        self.index += 1;
+        let start = self.index;
+
+        while self.peek() as char != '"' {
+            self.index += 1;
+        }
+        self.index+=1;
+
+        match std::str::from_utf8(&self.program[start..self.index-1]){
+            Ok(string) => Ok(Lexeme::String(string.to_string())),
+            Err(_) => Err(ErrorType::LexError("String literal contained invalid bytes".to_string()))
+        }
+
     }
 
     fn operator(&mut self) -> MudResult<Lexeme> {

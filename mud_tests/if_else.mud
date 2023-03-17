@@ -1,6 +1,6 @@
-a : int;
+a : i32;
 a = 1;
-b: int;
+b: i32;
 
 if a {
     b = 1

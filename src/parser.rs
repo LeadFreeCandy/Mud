@@ -9,6 +9,7 @@ pub enum Expression {
     Null,
     Integer(u64),
     Identifier(String),
+    String(String),
     BinaryOperation(Operator, Box<Expression>, Box<Expression>), // TODO: probably get rid of expression composition as a binary operation
     UnaryOperation(Operator, Box<Expression>),
     Block(Box<Expression>),
@@ -59,7 +60,7 @@ impl Parser {
             expr
         }
         else {
-            Err(ErrorType::ParseError("Expected EOF but got some token".to_string()))
+            Err(ErrorType::ParseError(format!("Expected EOF but got some token: {:?}", self.token).to_string()))
         }
     }
 
@@ -153,10 +154,30 @@ impl Parser {
                 Ok(Expression::Identifier(s))
             }
 
+            Lexeme::String(s) => {
+                Ok(Expression::String(s))
+            }
+
             //negate
             Lexeme::Operator(Operator::Minus) => {
                 Ok(Expression::UnaryOperation(
                     Operator::Minus,
+                    Box::new(self.term()?),
+                ))
+            }
+
+            //deref
+            Lexeme::Operator(Operator::Asterisk) => {
+                Ok(Expression::UnaryOperation(
+                    Operator::Asterisk,
+                    Box::new(self.term()?),
+                ))
+            }
+
+            //
+            Lexeme::Operator(Operator::Ampersand) => {
+                Ok(Expression::UnaryOperation(
+                    Operator::Ampersand,
                     Box::new(self.term()?),
                 ))
             }
@@ -190,6 +211,7 @@ impl Parser {
                     Err(ErrorType::ParseError("Unclosed brace".to_string()))
                 }
             }
+
 
             Lexeme::Keyword(Keyword::If) => {
                 self.ifelse()

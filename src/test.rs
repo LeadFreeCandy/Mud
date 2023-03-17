@@ -83,10 +83,9 @@ fn sequence() {
 }
 
 // #[test]
-fn identifiers(){
-    // parse_file("identifiers.mud");
-    test_compile("identifiers.mud");
-}
+// fn identifiers(){
+//     test_compile("identifiers.mud");
+// }
 
 #[test]
 fn assignment(){
@@ -121,10 +120,32 @@ fn run_while() {
     test_run(filename, Some("109876543210"));
 }
 
+#[test]
+fn string_literal() {
+    let filename = "str_literal.mud";
+    lex_file(filename);
+    parse_file(filename);
+    test_run(filename, Some("testcatcat"));
+}
 
 
-// #[test]
-fn run_add_mul() {
-    let filename = "add_mul.mud";
-    transpile_file(filename);
+#[test]
+fn pointer(){
+    let filename = "pointer.mud";
+    lex_file(filename);
+    parse_file(filename);
+    test_run(filename, Some("67"));
+}
+
+#[test]
+fn char(){
+    let filename = "char.mud";
+    test_run(filename, Some("A"));
+}
+
+#[test]
+fn comment(){
+    let filename = "comment.mud";
+    lex_file(filename);
+    test_run(filename, Some("print this\nand this\n"));
 }
