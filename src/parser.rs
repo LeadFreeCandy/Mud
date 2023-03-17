@@ -4,31 +4,32 @@ use crate::lexer::{error::{ErrorType, MudResult}, Keyword};
 pub use crate::lexer::{Lexeme, Lexer, Operator};
 use once_cell::sync::Lazy; // TODO: figure out why it cannot be unsync
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Expression {
     Null,
     Integer(u64),
     Identifier(String),
     String(String),
-    BinaryOperation(Operator, Box<Expression>, Box<Expression>), // TODO: probably get rid of expression composition as a binary operation
-    UnaryOperation(Operator, Box<Expression>),
+    BinaryOperation { op: Operator, lhs: Box<Expression>, rhs: Box<Expression> }, // TODO: probably get rid of expression composition as a binary operation
+    UnaryOperation { op: Operator, oprand: Box<Expression> },
     Block(Box<Expression>),
-    IfElse(Box<Expression>, Box<Expression>, Box<Expression>),
-    While(Box<Expression>, Box<Expression>),
+    IfElse { condition: Box<Expression>, on_if: Box<Expression>, on_else: Box<Expression> },
+    While { condition: Box<Expression>, body: Box<Expression> },
+    Function { args: Vec<Expression>, return_type: Box<Expression>, body: Box<Expression> }
 }
 
 pub struct Parser {
     lexer: Lexer,
-    token: Lexeme,
+    lexeme: Lexeme,
 }
 
 
 static PRECEDENCE_LOOKUP: Lazy<HashMap<Operator, u8>> = Lazy::new(|| {
-
     let mut precedence_lookup = HashMap::new();
 
     precedence_lookup.insert(Operator::Semicolon, 5);
 
+    precedence_lookup.insert(Operator::ColonEquals, 4);
     precedence_lookup.insert(Operator::Equals, 4);
     precedence_lookup.insert(Operator::Colon, 4);
 
@@ -45,22 +46,31 @@ static MAX_PRECEDENCE: Lazy<u8> = Lazy::new(|| {
     *PRECEDENCE_LOOKUP.values().max().unwrap()
 });
 
+macro_rules! expect_lexeme {
+    ($self:ident, $lexeme:pat) => {
+        match &$self.lexeme {
+            $lexeme => { $self.advance()?; },
+            t => return Err(ErrorType::ParseError(format!("Expected lexeme {} but got {:?}", stringify!($lexeme), t))),
+        }
+    };
+}
+
 impl Parser {
     pub fn new(program: Vec<u8>) -> Self {
         Self {
             lexer: Lexer::new(program),
-            token: Lexeme::Eof,
+            lexeme: Lexeme::Eof,
         }
     }
 
     pub fn parse(&mut self) -> MudResult<Expression> {
         self.advance()?;
         let expr = self.expression();
-        if let Lexeme::Eof = self.token {
+        if let Lexeme::Eof = self.lexeme {
             expr
         }
         else {
-            Err(ErrorType::ParseError(format!("Expected EOF but got some token: {:?}", self.token).to_string()))
+            Err(ErrorType::ParseError(format!("Expected EOF but gote some lexeme {:?}", self.lexeme)))
         }
     }
 
@@ -79,7 +89,7 @@ impl Parser {
     fn ifelse(&mut self) -> MudResult<Expression> {
         // assume `if` has already been consumed
         fn is_if_or_block(expr: &Expression) -> bool {
-            if let Expression::IfElse(..) = expr {
+            if let Expression::IfElse { .. } = expr {
                 return true;
             }
 
@@ -89,7 +99,7 @@ impl Parser {
         let condition = self.expression()?;
         let on_if = self.expression()?;
 
-        let on_else = if let Lexeme::Keyword(crate::lexer::Keyword::Else) = self.token {
+        let on_else = if let Lexeme::Keyword(crate::lexer::Keyword::Else) = self.lexeme {
             self.advance()?;
             self.expression()?
         }
@@ -100,7 +110,7 @@ impl Parser {
         if !Self::is_block(&on_if) { return Err(ErrorType::ParseError("Expected block after `if`".to_string())); }
         if !is_if_or_block(&on_else) { return Err(ErrorType::ParseError("Expected block after `else`".to_string())); }
 
-        Ok(Expression::IfElse(Box::new(condition), Box::new(on_if), Box::new(on_else)))
+        Ok(Expression::IfElse { condition: Box::new(condition), on_if: Box::new(on_if), on_else: Box::new(on_else) })
     }
 
     fn while_loop(&mut self) -> MudResult<Expression> {
@@ -113,7 +123,52 @@ impl Parser {
 
         if !Self::is_block(&body) { return Err(ErrorType::ParseError("Expected block after `while`".to_string())); }
 
-        Ok(Expression::While(Box::new(condition), Box::new(body)))
+        Ok(Expression::While { condition: Box::new(condition), body: Box::new(body) })
+    }
+
+    fn function(&mut self) -> MudResult<Expression> {
+        fn is_decl(expr: &Expression) -> bool {
+            if let Expression::BinaryOperation { op, lhs, .. } = expr {
+                if let Expression::Identifier(_) = **lhs {
+                    return *op == Operator::Colon;
+                }
+            }
+
+            return false;
+        }
+
+        // assume `function` has already been consumed
+
+        let mut args = Vec::new();
+
+        expect_lexeme!(self, Lexeme::Operator(Operator::OpenParenthesis));
+
+        loop {
+            if let Lexeme::Operator(Operator::CloseParenthesis) = self.lexeme {
+                break;
+            }
+
+            if args.len() != 0 {
+                expect_lexeme!(self, Lexeme::Operator(Operator::Comma))
+            }
+
+            let arg = self.expression()?;
+            if !is_decl(&arg) {
+                return Err(ErrorType::ParseError("Malformed arguments in function type".to_string()));
+            }
+
+            args.push(arg)
+        }
+
+        self.advance()?;
+        expect_lexeme!(self, Lexeme::Operator(Operator::Arrow));
+
+        let return_type = Box::new(self.expression()?);
+        let body = Box::new(self.expression()?);
+
+        if !Self::is_block(&body) { return Err(ErrorType::ParseError("Expected block as function body".to_string())); }
+
+        Ok(Expression::Function { args, return_type, body })
     }
 
     fn binary_operation(&mut self, precedence: u8) -> MudResult<Expression> {
@@ -123,15 +178,11 @@ impl Parser {
 
         let mut expr = self.binary_operation(precedence - 1)?;
 
-        while let Lexeme::Operator(op) = self.token {
+        while let Lexeme::Operator(op) = self.lexeme {
             if let Some(&op_precedence) = PRECEDENCE_LOOKUP.get(&op) {
                 if op_precedence == precedence {
                     self.advance()?;
-                    expr = Expression::BinaryOperation(
-                        op,
-                        Box::new(expr),
-                        Box::new(self.binary_operation(precedence - 1)?),
-                    );
+                    expr = Expression::BinaryOperation { op, lhs: Box::new(expr), rhs: Box::new(self.binary_operation(precedence - 1)?) };
                 } else {
                     break;
                 }
@@ -160,40 +211,34 @@ impl Parser {
 
             //negate
             Lexeme::Operator(Operator::Minus) => {
-                Ok(Expression::UnaryOperation(
-                    Operator::Minus,
-                    Box::new(self.term()?),
-                ))
+                Ok(Expression::UnaryOperation { op: Operator::Minus, oprand: Box::new(self.term()?) })
             }
 
             //deref
             Lexeme::Operator(Operator::Asterisk) => {
-                Ok(Expression::UnaryOperation(
-                    Operator::Asterisk,
-                    Box::new(self.term()?),
-                ))
+                Ok(Expression::UnaryOperation {
+                    op: Operator::Asterisk,
+                    oprand: Box::new(self.term()?),
+                })
             }
 
             //
             Lexeme::Operator(Operator::Ampersand) => {
-                Ok(Expression::UnaryOperation(
-                    Operator::Ampersand,
-                    Box::new(self.term()?),
-                ))
+                Ok(Expression::UnaryOperation {
+                    op: Operator::Ampersand,
+                    oprand: Box::new(self.term()?),
+                })
             }
 
             //print
             Lexeme::Operator(Operator::LessThan) => {
-                Ok(Expression::UnaryOperation(
-                    Operator::LessThan,
-                    Box::new(self.term()?),
-                ))
+                Ok(Expression::UnaryOperation { op: Operator::LessThan, oprand: Box::new(self.term()?) })
             }
 
             Lexeme::Operator(Operator::OpenParenthesis) => {
                 let expr = self.expression()?;
 
-                if let Lexeme::Operator(Operator::CloseParenthesis) = self.token {
+                if let Lexeme::Operator(Operator::CloseParenthesis) = self.lexeme {
                     self.advance()?;
                     Ok(expr)
                 } else {
@@ -204,7 +249,7 @@ impl Parser {
             Lexeme::Operator(Operator::OpenBrace) => {
                 let expr = self.expression()?;
 
-                if let Lexeme::Operator(Operator::CloseBrace) = self.token {
+                if let Lexeme::Operator(Operator::CloseBrace) = self.lexeme {
                     self.advance()?;
                     Ok(Expression::Block(Box::new(expr)))
                 } else {
@@ -221,6 +266,10 @@ impl Parser {
                 self.while_loop()
             }
 
+            Lexeme::Keyword(Keyword::Function) => {
+                self.function()
+            }
+
             Lexeme::Eof => Ok(Expression::Null),
 
             t => Err(ErrorType::ParseError(format!(
@@ -231,6 +280,6 @@ impl Parser {
     }
 
     fn advance(&mut self) -> MudResult<Lexeme> {
-        Ok(std::mem::replace(&mut self.token, self.lexer.next()?))
+        Ok(std::mem::replace(&mut self.lexeme, self.lexer.next()?))
     }
 }

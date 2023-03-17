@@ -1,10 +1,11 @@
 - [ ] functions
 - [ ] structs
-- [ ] pointer/arrays
-  - [ ] pointers
-    - [ ] deref
-    - [ ] address of
-    - [ ] Update type system
-  - [ ] arrays
-- [ ] comments
+- [x] pointer/~arrays~
+  - [x] pointers
+    - [x] deref
+    - [x] address of
+    - [x] update type system
+  - [ ] ~arrays~
+- [x] comments
 - [ ] global constants
+- [ ] get rid of the function composition

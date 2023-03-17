@@ -1,3 +1,4 @@
+main := fn() -> i32 {
 a : i32;
 a = 5;
 
@@ -12,3 +13,4 @@ a_ptr_ptr = &a_ptr;
 
 **a_ptr_ptr = 7;
 <a
+}
