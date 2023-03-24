@@ -299,30 +299,18 @@ impl Compiler {
             Ok((strs, types))
         }
 
-        fn resolve_return_type(this: &mut Compiler, return_type: Expression) -> MudResult<ValueType> {
-            let return_type = this.convert(return_type)?;
-            if let ExprType::Type = return_type.atom_type.expr {
-                return this.find_type(&return_type);
-            }
-            else {
-                Err(ErrorType::CompileError("Invalid return type".to_string()))
-            }
-        }
-
-        if self.scope_stack.len() != 1 {
-            return MudResult::Err(ErrorType::CompileError("Functions are not allowed outside the top level".to_string()));
-        }
-
         match (lhs.atom_type.expr, rhs.atom_type.expr) {
             (ExprType::Identifier, ExprType::FunctionLiteral { args, return_type, body }) => {
-                let return_type_string = match return_type.as_ref() {
-                    Expression::Identifier(s) => s.clone(),
-                    _ => unreachable!(),
-                };
+                if dbg!(self.scope_stack.len()) != 1 {
+                    return MudResult::Err(ErrorType::CompileError("Functions are not allowed outside the top level".to_string()));
+                }
+
+                let return_converted = self.convert(*return_type)?;
+                let return_type_string = &return_converted.source;
 
                 let mut fn_scope = HashMap::new();
                 let (strs, types) = resolve_args(self, args, &mut fn_scope)?;
-                let f_type = ValueType::Function { args: types, return_type: Box::new(resolve_return_type(self, *return_type)?) };
+                let f_type = ValueType::Function { args: types, return_type: Box::new(self.find_type(&return_converted)?) };
 
                 if self.scope_stack.last_mut().unwrap().insert(lhs.source.clone(), f_type).is_some() {
                     return MudResult::Err(ErrorType::CompileError("Function redelcaration".to_string()));
@@ -330,7 +318,9 @@ impl Compiler {
 
                 self.scope_stack.push(fn_scope);
 
-                Ok(CompiledAtom::new(format!("{} {}({}){}", return_type_string, lhs.source, strs.join(", "), self.convert(*body)?.source), ValueType::Void, ExprType::Expression))
+                let result = Ok(CompiledAtom::new(format!("{} {}({}){}", return_type_string, lhs.source, strs.join(", "), self.convert(*body)?.source), ValueType::Void, ExprType::Expression));
+                self.scope_stack.pop();
+                result
             }
             e => MudResult::Err(ErrorType::CompileError(format!("Invalid lhs of assignment {:?}", e))),
         }

@@ -163,8 +163,9 @@ impl Parser {
         self.advance()?;
         expect_lexeme!(self, Lexeme::Operator(Operator::Arrow));
 
-        let return_type = Box::new(self.expression()?);
-        let body = Box::new(self.expression()?);
+        let return_type = Box::new(dbg!(self.expression()?));
+        dbg!(&self.lexeme);
+        let body = Box::new(dbg!(self.expression()?));
 
         if !Self::is_block(&body) { return Err(ErrorType::ParseError("Expected block as function body".to_string())); }
 
