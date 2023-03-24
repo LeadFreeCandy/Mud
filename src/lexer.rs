@@ -40,6 +40,7 @@ pub enum Keyword {
     Else,
     While,
     Function,
+    Return,
 }
 
 static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
@@ -78,6 +79,7 @@ static KEYWORDS: Lazy<HashMap<&'static str, Keyword>> = Lazy::new(|| {
     keyword_map.insert("else", Keyword::Else);
     keyword_map.insert("while", Keyword::While);
     keyword_map.insert("fn", Keyword::Function);
+    keyword_map.insert("return", Keyword::Return);
 
     keyword_map
 });

@@ -62,6 +62,7 @@ impl Compiler {
 
     pub fn compile_full(&mut self, program: Vec<u8>) -> MudResult<Vec<u8>>{
         let output = self.compile(program)?;
+        assert!(self.scope_stack.len() == 1);
 
         Ok(format!(program_fmt!(), String::from_utf8(output).unwrap()).into_bytes())
     }
@@ -149,6 +150,32 @@ impl Compiler {
         })
     }
 
+    fn function_call(&mut self, function: Expression, args: Vec<Expression>) -> MudResult<CompiledAtom> {
+        let function = self.convert(function)?;
+
+        let mut source = String::new();
+
+        match self.resolve_type(&function)? { // NOTE: not type checking here at all
+            ValueType::Function { args: _, return_type } => {
+                source.push_str(&function.source);
+                source.push('(');
+
+                for arg in args {
+                    source.push_str(&self.convert(arg)?.source);
+                }
+
+                source.push(')');
+
+                Ok(CompiledAtom { source, atom_type: Type { expr: ExprType::Expression, value: *return_type } })
+            },
+            t => Err(ErrorType::CompileError(format!("Cannot call a {:?}", t)))
+        }
+    }
+
+    fn return_statement(&mut self, value: Expression) -> MudResult<CompiledAtom> {
+        Ok(CompiledAtom { source: format!("return {}", self.convert(value)?.source), atom_type: Type { value: ValueType::Unknown, expr: ExprType::Expression } })
+    }
+
     fn convert(&mut self, expression: Expression) -> MudResult<CompiledAtom> {
         match expression {
             Expression::Integer(val) => {
@@ -184,6 +211,12 @@ impl Compiler {
             }
             Expression::Function { args, return_type, body } => {
                 self.function(args, return_type, body)
+            }
+            Expression::FunctionCall { function, args } => {
+                self.function_call(*function, args)
+            }
+            Expression::Return(value) => {
+                self.return_statement(*value)
             }
             Expression::Null => Ok(CompiledAtom::new(String::new(), ValueType::Void, ExprType::Literal)),
         }

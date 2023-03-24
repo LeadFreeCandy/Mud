@@ -1,4 +1,4 @@
-use std::{collections::HashMap, string::ParseError};
+use std::collections::HashMap;
 
 use crate::lexer::{error::{ErrorType, MudResult}, Keyword};
 pub use crate::lexer::{Lexeme, Lexer, Operator};
@@ -12,6 +12,8 @@ pub enum Expression {
     String(String),
     BinaryOperation { op: Operator, lhs: Box<Expression>, rhs: Box<Expression> }, // TODO: probably get rid of expression composition as a binary operation
     UnaryOperation { op: Operator, oprand: Box<Expression> },
+    FunctionCall { function: Box<Expression>, args: Vec<Expression> },
+    Return(Box<Expression>),
     Block(Box<Expression>),
     IfElse { condition: Box<Expression>, on_if: Box<Expression>, on_else: Box<Expression> },
     While { condition: Box<Expression>, body: Box<Expression> },
@@ -137,7 +139,7 @@ impl Parser {
             return false;
         }
 
-        // assume `function` has already been consumed
+        // assume `fn` has already been consumed
 
         let mut args = Vec::new();
 
@@ -145,6 +147,7 @@ impl Parser {
 
         loop {
             if let Lexeme::Operator(Operator::CloseParenthesis) = self.lexeme {
+                self.advance()?;
                 break;
             }
 
@@ -160,7 +163,6 @@ impl Parser {
             args.push(arg)
         }
 
-        self.advance()?;
         expect_lexeme!(self, Lexeme::Operator(Operator::Arrow));
 
         let return_type = Box::new(dbg!(self.expression()?));
@@ -197,7 +199,7 @@ impl Parser {
     }
 
     fn term(&mut self) -> MudResult<Expression> {
-        match self.advance()? {
+        let term = match self.advance()? {
             Lexeme::Integer(i) => {
                 Ok(Expression::Integer(i))
             }
@@ -271,12 +273,40 @@ impl Parser {
                 self.function()
             }
 
+            Lexeme::Keyword(Keyword::Return) => {
+                Ok(Expression::Return(Box::new(self.expression()?)))
+            }
+
             Lexeme::Eof => Ok(Expression::Null),
 
             t => Err(ErrorType::ParseError(format!(
                 "Expected term, recieved {:?}",
                 t
             ))),
+        }?;
+
+        match &self.lexeme {
+            Lexeme::Operator(Operator::OpenParenthesis) => {
+                self.advance()?;
+
+                let mut args = Vec::new();
+
+                loop {
+                    if let Lexeme::Operator(Operator::CloseParenthesis) = self.lexeme {
+                        self.advance()?;
+                        break;
+                    }
+
+                    if args.len() != 0 {
+                        expect_lexeme!(self, Lexeme::Operator(Operator::Comma));
+                    }
+
+                    args.push(self.expression()?);
+                }
+
+                Ok(Expression::FunctionCall { function: Box::new(term), args })
+            }
+            _ => Ok(term),
         }
     }
 
