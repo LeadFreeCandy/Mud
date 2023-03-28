@@ -37,6 +37,7 @@ struct CompiledAtom {
 
 pub struct Compiler {
     scope_stack: Vec<HashMap<String, ValueType>>,
+    forward_decls: String,
 }
 
 impl CompiledAtom {
@@ -52,6 +53,7 @@ macro_rules! program_fmt {
     () => ("#include <stdio.h>\n\
             #include <stdlib.h>\n\
             typedef int i32;\n\
+            {}\n\
             {}");
 }
 
@@ -61,14 +63,14 @@ impl Compiler {
 
         globals.insert("malloc".to_string(), ValueType::Function { args: vec![ValueType::I32], return_type: Box::new(ValueType::Pointer(Box::new(ValueType::Void))) });
 
-        Self { scope_stack: vec![globals] }
+        Self { scope_stack: vec![globals], forward_decls: String::new() }
     }
 
     pub fn compile_full(&mut self, program: Vec<u8>) -> MudResult<Vec<u8>>{
         let output = self.compile(program)?;
         assert!(self.scope_stack.len() == 1);
 
-        Ok(format!(program_fmt!(), String::from_utf8(output).unwrap()).into_bytes())
+        Ok(format!(program_fmt!(), self.forward_decls, String::from_utf8(output).unwrap()).into_bytes())
     }
 
     pub fn compile(&mut self, program: Vec<u8>) -> MudResult<Vec<u8>> {
@@ -362,7 +364,11 @@ impl Compiler {
 
                 self.scope_stack.push(fn_scope);
 
-                let result = Ok(CompiledAtom::new(format!("{} {}({}){}", return_type_string, lhs.source, strs.join(", "), self.convert(*body)?.source), ValueType::Void, ExprType::Expression));
+                let header = format!("{} {}({})", return_type_string, lhs.source, strs.join(", "));
+                self.forward_decls.push_str(&header);
+                self.forward_decls.push_str(";\n");
+
+                let result = Ok(CompiledAtom::new(format!("{}{}", header, self.convert(*body)?.source), ValueType::Void, ExprType::Expression));
                 self.scope_stack.pop();
                 result
             }
