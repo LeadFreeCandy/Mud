@@ -57,7 +57,11 @@ macro_rules! program_fmt {
 
 impl Compiler {
     pub fn new() -> Self {
-        Self { scope_stack: vec![HashMap::new()] }
+        let mut globals = HashMap::new();
+
+        globals.insert("malloc".to_string(), ValueType::Function { args: vec![ValueType::I32], return_type: Box::new(ValueType::Pointer(Box::new(ValueType::Void))) });
+
+        Self { scope_stack: vec![globals] }
     }
 
     pub fn compile_full(&mut self, program: Vec<u8>) -> MudResult<Vec<u8>>{
@@ -274,19 +278,32 @@ impl Compiler {
     }
 
     fn assign(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
+        fn ensure_types_equal(lhs: &ValueType, rhs: &ValueType) -> MudResult<()> {
+            if *lhs == ValueType::U8 || *lhs == ValueType::I32 && *rhs == ValueType::U8 || *rhs == ValueType::I32 {
+                return Ok(());
+            }
+
+            if let ValueType::Pointer(t) = rhs {
+                if **t == ValueType::Void {
+                    if let ValueType::Pointer(_) = lhs {
+                        return Ok(());
+                    }
+                }
+            }
+
+            if lhs == rhs {
+                return Ok(())
+            }
+
+            MudResult::Err(ErrorType::CompileError(format!("Expected type {lhs:?} but got type {rhs:?} in assignment")))
+        }
+
         match lhs.atom_type.expr {
             ExprType::Identifier => {
                 let lhs_type = self.resolve_type(&lhs)?;
                 let rhs_type = rhs.atom_type.value;
 
-                if lhs_type == ValueType::U8 || lhs_type == ValueType::I32 &&
-                    rhs_type == ValueType::U8 || rhs_type == ValueType::I32 {
-                        return Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
-                    }
-
-                if lhs_type != rhs_type {
-                    return MudResult::Err(ErrorType::CompileError("Wrong type".to_string()));
-                }
+                ensure_types_equal(&lhs_type, &rhs_type)?;
 
                 Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
             }
@@ -294,14 +311,8 @@ impl Compiler {
                 let lhs_type = self.resolve_type(&lhs)?;
                 let rhs_type = rhs.atom_type.value;
 
-                if lhs_type == ValueType::U8 || lhs_type == ValueType::I32 &&
-                    rhs_type == ValueType::U8 || rhs_type == ValueType::I32 {
-                        return Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
-                    }
+                ensure_types_equal(&lhs_type, &rhs_type)?;
 
-                if lhs_type != rhs_type {
-                    return MudResult::Err(ErrorType::CompileError("Wrong type".to_string()));
-                }
                 Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
             }
             e => {

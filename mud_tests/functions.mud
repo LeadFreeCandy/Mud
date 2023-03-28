@@ -18,5 +18,6 @@
 
     c = func1(34) + func1(3234);
     a = func1(0);
+    b = malloc(23);
     b = func2(0)
 })
