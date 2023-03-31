@@ -38,6 +38,7 @@ struct CompiledAtom {
 
 pub struct Compiler {
     scope_stack: Vec<HashMap<String, ValueType>>,
+    forward_decls: String,
 }
 
 impl CompiledAtom {
@@ -53,19 +54,24 @@ macro_rules! program_fmt {
     () => ("#include <stdio.h>\n\
             #include <stdlib.h>\n\
             typedef int i32;\n\
+            {}\n\
             {}");
 }
 
 impl Compiler {
     pub fn new() -> Self {
-        Self { scope_stack: vec![HashMap::new()] }
+        let mut globals = HashMap::new();
+
+        globals.insert("calloc".to_string(), ValueType::Function { args: vec![ValueType::I32], return_type: Box::new(ValueType::Pointer(Box::new(ValueType::Void))) });
+
+        Self { scope_stack: vec![globals], forward_decls: String::new() }
     }
 
     pub fn compile_full(&mut self, program: Vec<u8>) -> MudResult<Vec<u8>>{
         let output = self.compile(program)?;
         assert!(self.scope_stack.len() == 1);
 
-        Ok(format!(program_fmt!(), String::from_utf8(output).unwrap()).into_bytes())
+        Ok(format!(program_fmt!(), self.forward_decls, String::from_utf8(output).unwrap()).into_bytes())
     }
 
     pub fn compile(&mut self, program: Vec<u8>) -> MudResult<Vec<u8>> {
@@ -298,19 +304,32 @@ impl Compiler {
     }
 
     fn assign(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
+        fn ensure_types_equal(lhs: &ValueType, rhs: &ValueType) -> MudResult<()> {
+            if *lhs == ValueType::U8 || *lhs == ValueType::I32 && *rhs == ValueType::U8 || *rhs == ValueType::I32 {
+                return Ok(());
+            }
+
+            if let ValueType::Pointer(t) = rhs {
+                if **t == ValueType::Void {
+                    if let ValueType::Pointer(_) = lhs {
+                        return Ok(());
+                    }
+                }
+            }
+
+            if lhs == rhs {
+                return Ok(())
+            }
+
+            MudResult::Err(ErrorType::CompileError(format!("Expected type {lhs:?} but got type {rhs:?} in assignment")))
+        }
+
         match lhs.atom_type.expr {
             ExprType::Identifier => {
                 let lhs_type = self.resolve_type(&lhs)?;
                 let rhs_type = rhs.atom_type.value;
 
-                if lhs_type == ValueType::U8 || lhs_type == ValueType::I32 &&
-                    rhs_type == ValueType::U8 || rhs_type == ValueType::I32 {
-                        return Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
-                    }
-
-                if lhs_type != rhs_type {
-                    return MudResult::Err(ErrorType::CompileError("Wrong type".to_string()));
-                }
+                ensure_types_equal(&lhs_type, &rhs_type)?;
 
                 Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
             }
@@ -318,14 +337,8 @@ impl Compiler {
                 let lhs_type = self.resolve_type(&lhs)?;
                 let rhs_type = rhs.atom_type.value;
 
-                if lhs_type == ValueType::U8 || lhs_type == ValueType::I32 &&
-                    rhs_type == ValueType::U8 || rhs_type == ValueType::I32 {
-                        return Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
-                    }
+                ensure_types_equal(&lhs_type, &rhs_type)?;
 
-                if lhs_type != rhs_type {
-                    return MudResult::Err(ErrorType::CompileError("Wrong type".to_string()));
-                }
                 Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
             }
             e => {
@@ -375,7 +388,11 @@ impl Compiler {
 
                 self.scope_stack.push(fn_scope);
 
-                let result = Ok(CompiledAtom::new(format!("{} {}({}){}", return_type_string, lhs.source, strs.join(", "), self.convert(*body)?.source), ValueType::Void, ExprType::Expression));
+                let header = format!("{} {}({})", return_type_string, lhs.source, strs.join(", "));
+                self.forward_decls.push_str(&header);
+                self.forward_decls.push_str(";\n");
+
+                let result = Ok(CompiledAtom::new(format!("{}{}", header, self.convert(*body)?.source), ValueType::Void, ExprType::Expression));
                 self.scope_stack.pop();
                 result
             },
