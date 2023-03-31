@@ -61,7 +61,7 @@ impl Compiler {
     pub fn new() -> Self {
         let mut globals = HashMap::new();
 
-        globals.insert("malloc".to_string(), ValueType::Function { args: vec![ValueType::I32], return_type: Box::new(ValueType::Pointer(Box::new(ValueType::Void))) });
+        globals.insert("calloc".to_string(), ValueType::Function { args: vec![ValueType::I32], return_type: Box::new(ValueType::Pointer(Box::new(ValueType::Void))) });
 
         Self { scope_stack: vec![globals], forward_decls: String::new() }
     }
