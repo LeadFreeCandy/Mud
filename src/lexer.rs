@@ -32,6 +32,8 @@ pub enum Operator {
     ColonEquals,
 
     Ampersand,
+
+    Dot,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -40,6 +42,7 @@ pub enum Keyword {
     Else,
     While,
     Function,
+    Struct,
     Return,
 }
 
@@ -68,6 +71,8 @@ static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
     operator_map.insert(",", Operator::Comma);
     operator_map.insert(":=", Operator::ColonEquals);
 
+    operator_map.insert(".", Operator::Dot);
+
     operator_map
 });
 
@@ -79,6 +84,7 @@ static KEYWORDS: Lazy<HashMap<&'static str, Keyword>> = Lazy::new(|| {
     keyword_map.insert("else", Keyword::Else);
     keyword_map.insert("while", Keyword::While);
     keyword_map.insert("fn", Keyword::Function);
+    keyword_map.insert("struct", Keyword::Struct);
     keyword_map.insert("return", Keyword::Return);
 
     keyword_map

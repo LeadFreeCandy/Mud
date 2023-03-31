@@ -1,4 +1,4 @@
-- [ ] functions
+- [x] functions
 - [ ] structs
 - [x] pointer/~arrays~
   - [x] pointers
@@ -7,5 +7,5 @@
     - [x] update type system
   - [ ] ~arrays~
 - [x] comments
-- [ ] global constants
-- [ ] get rid of the function composition
+- [ ] ~global constants~
+- [ ] ~get rid of the function composition~

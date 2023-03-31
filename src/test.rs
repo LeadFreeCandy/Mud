@@ -155,3 +155,9 @@ fn comment(){
     lex_file(filename);
     test_run(filename, Some("print this\nand this\n"));
 }
+
+#[test]
+fn r#struct(){
+    let filename = "struct.mud";
+    test_run(filename, None);
+}

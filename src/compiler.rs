@@ -7,17 +7,18 @@ use crate::lexer::error::{MudResult, ErrorType};
 pub enum ValueType {
     I32,
     U8,
-    // StringLiteral,
     Void,
     Pointer(Box<ValueType>),
     Unknown,
-    Function { args: Vec<ValueType>, return_type: Box<ValueType> }
+    Function { args: Vec<ValueType>, return_type: Box<ValueType> },
+    Struct (HashMap<String, ValueType>),
 }
 
 #[derive(Debug, Clone)]
 pub enum ExprType {
     Literal,
     FunctionLiteral { args: Vec<Expression>, return_type: Box<Expression>, body: Box<Expression> },
+    StructLiteral {fields: Vec<Expression>},
     Identifier,
     Type,
     Expression,
@@ -75,8 +76,17 @@ impl Compiler {
         Ok(output)
     }
 
+    fn struct_assign(&mut self, lhs: CompiledAtom, rhs: Expression) -> MudResult<CompiledAtom>{
+        todo!("Havent implemented this yet");
+    }
+
     fn binary_op_transpile(&mut self, op: Operator, lhs: Expression, rhs: Expression) -> MudResult<CompiledAtom> {
         let lhs = self.convert(lhs)?;
+        if let ExprType::Identifier = lhs.atom_type.expr {
+            if let Expression::Block(inner) = rhs {
+                return self.struct_assign(lhs, *inner);
+            }
+        }
         let rhs = self.convert(rhs)?;
 
         match op {
@@ -86,7 +96,7 @@ impl Compiler {
             Operator::Semicolon => self.comp(lhs, rhs),
             Operator::Colon => self.decl(lhs, rhs),
             Operator::Equals=> self.assign(lhs, rhs),
-            Operator::ColonEquals=> self.assign_func(lhs, rhs),
+            Operator::ColonEquals=> self.assign_func_struct(lhs, rhs),
 
             _ => Err(ErrorType::CompileError(format!("Binary operator {:?} cannot be transpiled", op))),
         }
@@ -147,6 +157,13 @@ impl Compiler {
         Ok(CompiledAtom {
             source: "_mud_uncompiled_function".to_string(),
             atom_type: Type { value: ValueType::Unknown, expr: ExprType::FunctionLiteral { args, return_type, body } },
+        })
+    }
+
+    fn r#struct(&mut self, fields: Vec<Expression>) -> MudResult<CompiledAtom>{
+        Ok(CompiledAtom {
+            source: "_mud_uncompiled_struct".to_string(),
+            atom_type: Type { value: ValueType::Unknown, expr: ExprType::StructLiteral {fields}},
         })
     }
 
@@ -212,6 +229,9 @@ impl Compiler {
             Expression::Function { args, return_type, body } => {
                 self.function(args, return_type, body)
             }
+            Expression::Struct {fields} => {
+                self.r#struct(fields)
+            }
             Expression::FunctionCall { function, args } => {
                 self.function_call(*function, args)
             }
@@ -268,6 +288,10 @@ impl Compiler {
 
 
                 Ok(res)
+            },
+            (ExprType::Identifier, ExprType::Identifier) => {
+                let res = CompiledAtom::new(format!("{} {}", rhs.source, lhs.source), ValueType::Void, ExprType::Expression);
+                Ok(res)
             }
             (l, r) => MudResult::Err(ErrorType::CompileError(format!("Cannot declare between types {:?} and {:?}", l, r))),
         }
@@ -310,7 +334,7 @@ impl Compiler {
         }
     }
 
-    fn assign_func(&mut self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
+    fn assign_func_struct(&mut self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
         fn resolve_args(this: &mut Compiler, args: Vec<Expression>, scope: &mut HashMap<String, ValueType>) -> MudResult<(Vec<String>, Vec<ValueType>)> {
             let mut strs = Vec::new();
             let mut types = Vec::new();
@@ -353,6 +377,35 @@ impl Compiler {
 
                 let result = Ok(CompiledAtom::new(format!("{} {}({}){}", return_type_string, lhs.source, strs.join(", "), self.convert(*body)?.source), ValueType::Void, ExprType::Expression));
                 self.scope_stack.pop();
+                result
+            },
+            (ExprType::Identifier, ExprType::StructLiteral{fields}) => {
+                if dbg!(self.scope_stack.len()) != 1 {
+                    return MudResult::Err(ErrorType::CompileError("Structs are not allowed outside the top level".to_string()));
+                }
+
+                let mut fn_scope = HashMap::new(); //this is a dummy scope
+                let (strs, types) = resolve_args(self, fields, &mut fn_scope)?;
+
+                let mut fields = HashMap::new();
+                    for (str, ftype) in strs.iter().zip(types.into_iter()){
+                        if fields.insert(str.to_owned(), ftype).is_some(){
+                            return MudResult::Err(ErrorType::CompileError("Duplicate field in struct".to_string()));
+                        }
+                    }
+                let s_type = ValueType::Struct(fields);
+
+                if self.scope_stack.last_mut().unwrap().insert(lhs.source.clone(), s_type).is_some() {
+                    return MudResult::Err(ErrorType::CompileError("Struct redelcaration".to_string()));
+                }
+
+                let result = Ok(CompiledAtom::new(
+                        format!("typedef struct {{ {} }} {};",
+                                strs.join("; ") + &";",
+                                lhs.source),
+                        ValueType::Void,
+                        ExprType::Expression
+                        ));
                 result
             }
             e => MudResult::Err(ErrorType::CompileError(format!("Invalid lhs of assignment {:?}", e))),

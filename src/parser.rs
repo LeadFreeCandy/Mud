@@ -17,7 +17,8 @@ pub enum Expression {
     Block(Box<Expression>),
     IfElse { condition: Box<Expression>, on_if: Box<Expression>, on_else: Box<Expression> },
     While { condition: Box<Expression>, body: Box<Expression> },
-    Function { args: Vec<Expression>, return_type: Box<Expression>, body: Box<Expression> }
+    Function { args: Vec<Expression>, return_type: Box<Expression>, body: Box<Expression> },
+    Struct {fields: Vec<Expression>},
 }
 
 pub struct Parser {
@@ -55,6 +56,16 @@ macro_rules! expect_lexeme {
             t => return Err(ErrorType::ParseError(format!("Expected lexeme {} but got {:?}", stringify!($lexeme), t))),
         }
     };
+}
+
+fn is_decl(expr: &Expression) -> bool {
+    if let Expression::BinaryOperation { op, lhs, .. } = expr {
+        if let Expression::Identifier(_) = **lhs {
+            return *op == Operator::Colon;
+        }
+    }
+
+    return false;
 }
 
 impl Parser {
@@ -128,19 +139,35 @@ impl Parser {
         Ok(Expression::While { condition: Box::new(condition), body: Box::new(body) })
     }
 
-    fn function(&mut self) -> MudResult<Expression> {
-        fn is_decl(expr: &Expression) -> bool {
-            if let Expression::BinaryOperation { op, lhs, .. } = expr {
-                if let Expression::Identifier(_) = **lhs {
-                    return *op == Operator::Colon;
-                }
+    fn r#struct(&mut self) -> MudResult<Expression> {
+        let mut fields = Vec::new();
+
+        expect_lexeme!(self, Lexeme::Operator(Operator::OpenBrace));
+
+        loop {
+            if let Lexeme::Operator(Operator::CloseBrace) = self.lexeme {
+                self.advance()?;
+                break;
             }
 
-            return false;
+            if fields.len() != 0 {
+                expect_lexeme!(self, Lexeme::Operator(Operator::Comma))
+            }
+
+            let field = self.expression()?;
+            if !is_decl(&field) {
+                return Err(ErrorType::ParseError("Malformed fields in struct body".to_string()));
+            }
+
+            fields.push(field)
         }
 
-        // assume `fn` has already been consumed
+        Ok(Expression::Struct{fields})
+    }
 
+    fn function(&mut self) -> MudResult<Expression> {
+
+        // assume `fn` has already been consumed
         let mut args = Vec::new();
 
         expect_lexeme!(self, Lexeme::Operator(Operator::OpenParenthesis));
@@ -250,7 +277,11 @@ impl Parser {
             }
 
             Lexeme::Operator(Operator::OpenBrace) => {
-                let expr = self.expression()?;
+                let expr = if let Lexeme::Operator(Operator::CloseBrace) = self.lexeme {
+                    Expression::Null
+                } else {
+                    self.expression()?
+                };
 
                 if let Lexeme::Operator(Operator::CloseBrace) = self.lexeme {
                     self.advance()?;
@@ -267,6 +298,10 @@ impl Parser {
 
             Lexeme::Keyword(Keyword::While) => {
                 self.while_loop()
+            }
+
+            Lexeme::Keyword(Keyword::Struct) => {
+                self.r#struct()
             }
 
             Lexeme::Keyword(Keyword::Function) => {
