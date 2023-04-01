@@ -103,6 +103,7 @@ impl Compiler {
             Operator::Colon => self.decl(lhs, rhs),
             Operator::Equals=> self.assign(lhs, rhs),
             Operator::ColonEquals=> self.assign_func_struct(lhs, rhs),
+            Operator::Dot=> self.dot(lhs, rhs),
 
             _ => Err(ErrorType::CompileError(format!("Binary operator {:?} cannot be transpiled", op))),
         }
@@ -281,6 +282,26 @@ impl Compiler {
         Ok(CompiledAtom::new(format!("{};\n{}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
     }
 
+    fn dot(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
+        match (self.resolve_type(&lhs)?, rhs.atom_type.expr){
+            (ValueType::Struct(fields), ExprType::Identifier) => {
+                let field_type = fields.get(&rhs.source);
+                if let Some(field_type) = field_type{
+                    Ok(CompiledAtom::new(format!("{}.{}", lhs.source, rhs.source), field_type.to_owned(), ExprType::Expression))
+                } else {
+                    dbg!(fields);
+                    return MudResult::Err(ErrorType::CompileError(format!("field \"{}\" not found on struct {:?}", rhs.source, lhs)));
+                }
+            }
+            // (ExprType::Identifier, rhs) => {
+            //
+            //     Ok(CompiledAtom::new(format!("{}.{}", lhs.source, rhs.source), ValueType::Unknown, ExprType::Expression))
+            //         // dbg!
+            // }
+            (bad_type, rhs) => MudResult::Err(ErrorType::CompileError(format!("lhs must be a struct but is {:?}, and rhs must be something but is {:?} ", bad_type, rhs))),
+        }
+    }
+
     fn decl(&mut self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
         match (lhs.atom_type.expr, &rhs.atom_type.expr) {
             (ExprType::Identifier, ExprType::Type) => {
@@ -296,8 +317,18 @@ impl Compiler {
                 Ok(res)
             },
             (ExprType::Identifier, ExprType::Identifier) => {
-                let res = CompiledAtom::new(format!("{} {}", rhs.source, lhs.source), ValueType::Void, ExprType::Expression);
-                Ok(res)
+                let rhs_type = self.resolve_type(&rhs)?;
+                if let ValueType::Struct(_) = rhs_type{
+                    let res = CompiledAtom::new(format!("{} {}", rhs.source, lhs.source), ValueType::Void, ExprType::Expression);
+
+                    if self.scope_stack.last_mut().unwrap().insert(lhs.source, rhs_type).is_some() {
+                        return MudResult::Err(ErrorType::CompileError("Variable redelcaration".to_string()));
+                    }
+
+                    return Ok(res)
+                } else {
+                    return MudResult::Err(ErrorType::CompileError(format!("Declaring between invalid identifiers, you're doing something weird")))
+                }
             }
             (l, r) => MudResult::Err(ErrorType::CompileError(format!("Cannot declare between types {:?} and {:?}", l, r))),
         }
@@ -369,6 +400,27 @@ impl Compiler {
             Ok((strs, types))
         }
 
+        fn resolve_fields(this: &mut Compiler, args: Vec<Expression>, scope: &mut HashMap<String, ValueType>) -> MudResult<(Vec<String>, Vec<ValueType>)> {
+            let mut strs = Vec::new();
+            let mut types = Vec::new();
+
+            for arg in args {
+                if let Expression::BinaryOperation { op, lhs, rhs } = arg {
+                    let rhs = this.convert(*rhs)?;
+                    if let (Operator::Colon, Expression::Identifier(ident), ExprType::Type) = (op, *lhs, &rhs.atom_type.expr) {
+                        strs.push(format!("{}", ident));
+                        types.push(this.find_type(&rhs)?);
+                        scope.insert(ident, types.last().unwrap().clone());
+                        continue;
+                    }
+                }
+
+                return Err(ErrorType::CompileError("Malformed function arguments".to_string()));
+            }
+
+            Ok((strs, types))
+        }
+
         match (lhs.atom_type.expr, rhs.atom_type.expr) {
             (ExprType::Identifier, ExprType::FunctionLiteral { args, return_type, body }) => {
                 if dbg!(self.scope_stack.len()) != 1 {
@@ -402,20 +454,21 @@ impl Compiler {
                 }
 
                 let mut fn_scope = HashMap::new(); //this is a dummy scope
-                let (strs, types) = resolve_args(self, fields, &mut fn_scope)?;
+                let (strs, types) = resolve_fields(self, fields.clone(), &mut fn_scope)?;
 
-                let mut fields = HashMap::new();
+                let mut fields_map = HashMap::new();
                     for (str, ftype) in strs.iter().zip(types.into_iter()){
-                        if fields.insert(str.to_owned(), ftype).is_some(){
+                        if fields_map.insert(str.to_owned(), ftype).is_some(){
                             return MudResult::Err(ErrorType::CompileError("Duplicate field in struct".to_string()));
                         }
                     }
-                let s_type = ValueType::Struct(fields);
+                let s_type = ValueType::Struct(fields_map);
 
                 if self.scope_stack.last_mut().unwrap().insert(lhs.source.clone(), s_type).is_some() {
                     return MudResult::Err(ErrorType::CompileError("Struct redelcaration".to_string()));
                 }
 
+                let (strs, _types) = resolve_args(self, fields, &mut fn_scope)?;
                 let result = Ok(CompiledAtom::new(
                         format!("typedef struct {{ {} }} {};",
                                 strs.join("; ") + &";",

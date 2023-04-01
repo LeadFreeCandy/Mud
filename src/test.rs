@@ -159,5 +159,7 @@ fn comment(){
 #[test]
 fn r#struct(){
     let filename = "struct.mud";
-    test_run(filename, None);
+    // lex_file(filename);
+    parse_file(filename);
+    test_run(filename, Some("tom the cat is 7 years old.\n"));
 }

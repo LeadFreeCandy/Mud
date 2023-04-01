@@ -30,11 +30,14 @@ pub struct Parser {
 static PRECEDENCE_LOOKUP: Lazy<HashMap<Operator, u8>> = Lazy::new(|| {
     let mut precedence_lookup = HashMap::new();
 
-    precedence_lookup.insert(Operator::Semicolon, 5);
+    precedence_lookup.insert(Operator::Semicolon, 6);
 
-    precedence_lookup.insert(Operator::ColonEquals, 4);
-    precedence_lookup.insert(Operator::Equals, 4);
-    precedence_lookup.insert(Operator::Colon, 4);
+
+    precedence_lookup.insert(Operator::ColonEquals, 5);
+    precedence_lookup.insert(Operator::Equals, 5);
+    precedence_lookup.insert(Operator::Colon, 5);
+
+    precedence_lookup.insert(Operator::Dot, 4);
 
     precedence_lookup.insert(Operator::LessThan, 3);
     precedence_lookup.insert(Operator::GreaterThan, 3);
@@ -42,6 +45,7 @@ static PRECEDENCE_LOOKUP: Lazy<HashMap<Operator, u8>> = Lazy::new(|| {
     precedence_lookup.insert(Operator::Plus, 2);
     precedence_lookup.insert(Operator::Minus, 2);
     precedence_lookup.insert(Operator::Asterisk, 1);
+
     precedence_lookup
 });
 
@@ -83,7 +87,7 @@ impl Parser {
             expr
         }
         else {
-            Err(ErrorType::ParseError(format!("Expected EOF but gote some lexeme {:?}", self.lexeme)))
+            Err(ErrorType::ParseError(format!("Expected EOF but got some lexeme {:?}", self.lexeme)))
         }
     }
 
