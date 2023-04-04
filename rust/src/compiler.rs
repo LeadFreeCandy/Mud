@@ -381,7 +381,7 @@ impl Compiler {
         match lhs.atom_type.expr {
             ExprType::Identifier => {
                 let lhs_type = self.resolve_type(&lhs)?;
-                let rhs_type = rhs.atom_type.value;
+                let rhs_type = self.resolve_type(&rhs)?;
 
                 ensure_types_equal(&lhs_type, &rhs_type)?;
 
@@ -389,7 +389,7 @@ impl Compiler {
             }
             ExprType::Expression => {
                 let lhs_type = self.resolve_type(&lhs)?;
-                let rhs_type = rhs.atom_type.value;
+                let rhs_type = self.resolve_type(&rhs)?;
 
                 ensure_types_equal(&lhs_type, &rhs_type)?;
 
