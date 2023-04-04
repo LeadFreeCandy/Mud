@@ -184,8 +184,12 @@ impl Compiler {
                 source.push_str(&function.source);
                 source.push('(');
 
+                let mut delim = ' ';
+
                 for arg in args {
+                    source.push(delim);
                     source.push_str(&self.convert(arg)?.source);
+                    delim=',';
                 }
 
                 source.push(')');

@@ -18,6 +18,6 @@
 
     c = func1(34) + func1(3234);
     a = func1(0);
-    b = calloc(23);
+    b = calloc(1, 23);
     b = func2(0)
 })

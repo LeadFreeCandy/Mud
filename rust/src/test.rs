@@ -110,13 +110,13 @@ fn scope(){
 #[test]
 fn run_if_else() {
     let filename = "if_else.mud";
-    test_compile(filename);
+    test_transpile(filename);
 }
 
 #[test]
 fn run_functions() {
     let filename = "functions.mud";
-    test_compile(filename);
+    test_transpile(filename);
 }
 
 #[test]
