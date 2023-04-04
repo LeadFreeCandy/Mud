@@ -54,6 +54,24 @@ macro_rules! program_fmt {
     () => ("#include <stdio.h>\n\
             #include <stdlib.h>\n\
             typedef int i32;\n\
+            char* read_file(char *filename){{\n\
+                char * buffer = 0;\n\
+                long length;\n\
+                FILE * f = fopen (filename, \"rb\");\n\
+                if (f)\n\
+                {{\n\
+                    fseek (f, 0, SEEK_END);\n\
+                    length = ftell (f);\n\
+                    fseek (f, 0, SEEK_SET);\n\
+                    buffer = malloc (length);\n\
+                    if (buffer)\n\
+                    {{\n\
+                        fread (buffer, 1, length, f);\n\
+                    }}\n\
+                    fclose (f);\n\
+                }}\n\
+                return buffer;\n\
+            }}\n\
             {}\n\
             {}");
 }
@@ -63,6 +81,7 @@ impl Compiler {
         let mut globals = HashMap::new();
 
         globals.insert("calloc".to_string(), ValueType::Function { args: vec![ValueType::I32], return_type: Box::new(ValueType::Pointer(Box::new(ValueType::Void))) });
+        globals.insert("read_file".to_string(), ValueType::Function { args: vec![ValueType::Pointer(Box::new(ValueType::U8))], return_type: Box::new(ValueType::Pointer(Box::new(ValueType::U8))) });
 
         Self { scope_stack: vec![globals], forward_decls: String::new() }
     }

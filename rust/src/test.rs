@@ -163,3 +163,9 @@ fn r#struct(){
     parse_file(filename);
     test_run(filename, Some("tom the cat is 7 years old.\n"));
 }
+
+#[test]
+fn read_file(){
+    let filename = "read_file.mud";
+    test_run(filename, Some("some text\n"))
+}
