@@ -174,3 +174,9 @@ fn read_file(){
     let filename = "read_file.mud";
     test_run(filename, Some("some text\n"))
 }
+
+#[test]
+fn r#const(){
+    let filename = "const.mud";
+    test_run(filename, Some("100"))
+}

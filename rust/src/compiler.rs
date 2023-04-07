@@ -127,7 +127,7 @@ impl Compiler {
             Operator::DoubleAmpersand => self.and(lhs, rhs),
             Operator::DoubleBar => self.or(lhs, rhs),
             Operator::Equals=> self.assign(lhs, rhs),
-            Operator::ColonEquals=> self.assign_func_struct(lhs, rhs),
+            Operator::ColonEquals=> self.assign_func_struct_const(lhs, rhs),
             Operator::Dot=> self.dot(lhs, rhs),
 
             _ => Err(ErrorType::CompileError(format!("Binary operator {:?} cannot be transpiled", op))),
@@ -445,7 +445,7 @@ impl Compiler {
         }
     }
 
-    fn assign_func_struct(&mut self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
+    fn assign_func_struct_const(&mut self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
         fn resolve_args(this: &mut Compiler, args: Vec<Expression>, scope: &mut HashMap<String, ValueType>) -> MudResult<(Vec<String>, Vec<ValueType>)> {
             let mut strs = Vec::new();
             let mut types = Vec::new();
@@ -540,6 +540,20 @@ impl Compiler {
                         format!("typedef struct {{ {} }} {};",
                                 strs.join("; ") + &";",
                                 lhs.source),
+                        ValueType::Void,
+                        ExprType::Expression
+                        ));
+                result
+            },
+            (ExprType::Identifier, ExprType::Literal) => {
+
+                let c_type = ValueType::I32;
+                if self.scope_stack.last_mut().unwrap().insert(lhs.source.clone(), c_type).is_some() {
+                    return MudResult::Err(ErrorType::CompileError("Struct redelcaration".to_string()));
+                }
+
+                let result = Ok(CompiledAtom::new(
+                        format!("i32 {} = {}", lhs.source, rhs.source),
                         ValueType::Void,
                         ExprType::Expression
                         ));
