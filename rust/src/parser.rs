@@ -26,25 +26,28 @@ pub struct Parser {
     lexeme: Lexeme,
 }
 
-
 static PRECEDENCE_LOOKUP: Lazy<HashMap<Operator, u8>> = Lazy::new(|| {
+    use Operator::*;
+
     let mut precedence_lookup = HashMap::new();
 
-    precedence_lookup.insert(Operator::Semicolon, 6);
+    let precedences = [
+        vec![Dot],
+        vec![Asterisk],
+        vec![Plus, Minus],
+        vec![LessThan, GreaterThan],
+        vec![DoubleEquals, ExclaimEquals],
+        vec![DoubleAmpersand],
+        vec![DoubleBar],
+        vec![Colon, Equals, ColonEquals],
+        vec![Semicolon],
+    ];
 
-
-    precedence_lookup.insert(Operator::ColonEquals, 5);
-    precedence_lookup.insert(Operator::Equals, 5);
-    precedence_lookup.insert(Operator::Colon, 5);
-
-    precedence_lookup.insert(Operator::Dot, 4);
-
-    precedence_lookup.insert(Operator::LessThan, 3);
-    precedence_lookup.insert(Operator::GreaterThan, 3);
-
-    precedence_lookup.insert(Operator::Plus, 2);
-    precedence_lookup.insert(Operator::Minus, 2);
-    precedence_lookup.insert(Operator::Asterisk, 1);
+    for (precedence, operators) in precedences.into_iter().enumerate() {
+        for op in operators {
+            precedence_lookup.insert(op, 1 + precedence as u8);
+        }
+    }
 
     precedence_lookup
 });
@@ -82,9 +85,9 @@ impl Parser {
 
     pub fn parse(&mut self) -> MudResult<Expression> {
         self.advance()?;
-        let expr = self.expression();
+        let expr = self.expression()?;
         if let Lexeme::Eof = self.lexeme {
-            expr
+            Ok(expr)
         }
         else {
             Err(ErrorType::ParseError(format!("Expected EOF but got some lexeme {:?}", self.lexeme)))
@@ -105,8 +108,12 @@ impl Parser {
 
     fn ifelse(&mut self) -> MudResult<Expression> {
         // assume `if` has already been consumed
-        fn is_if_or_block(expr: &Expression) -> bool {
+        fn is_valid_else(expr: &Expression) -> bool {
             if let Expression::IfElse { .. } = expr {
+                return true;
+            }
+
+            if let Expression::Null = expr {
                 return true;
             }
 
@@ -115,6 +122,7 @@ impl Parser {
 
         let condition = self.expression()?;
         let on_if = self.expression()?;
+        dbg!(&on_if);
 
         let on_else = if let Lexeme::Keyword(crate::lexer::Keyword::Else) = self.lexeme {
             self.advance()?;
@@ -124,8 +132,12 @@ impl Parser {
             Expression::Null
         };
 
+        dbg!(1, &self.lexeme);
+
         if !Self::is_block(&on_if) { return Err(ErrorType::ParseError("Expected block after `if`".to_string())); }
-        if !is_if_or_block(&on_else) { return Err(ErrorType::ParseError("Expected block after `else`".to_string())); }
+        if !is_valid_else(&on_else) { return Err(ErrorType::ParseError("Expected block after `else`".to_string())); }
+
+        dbg!(2, &self.lexeme);
 
         Ok(Expression::IfElse { condition: Box::new(condition), on_if: Box::new(on_if), on_else: Box::new(on_else) })
     }
@@ -252,6 +264,13 @@ impl Parser {
             Lexeme::Operator(Operator::Asterisk) => {
                 Ok(Expression::UnaryOperation {
                     op: Operator::Asterisk,
+                    oprand: Box::new(self.term()?),
+                })
+            }
+
+            Lexeme::Operator(Operator::Exclaim) => {
+                Ok(Expression::UnaryOperation {
+                    op: Operator::Exclaim,
                     oprand: Box::new(self.term()?),
                 })
             }
