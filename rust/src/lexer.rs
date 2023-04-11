@@ -2,9 +2,8 @@ use std::collections::HashMap;
 
 pub mod error;
 use error::{MudResult, ErrorType};
-// use crate::errors::{ParseResult, ErrorType};
 
-use once_cell::sync::Lazy; // TODO: figure out why it cannot be unsync
+use once_cell::sync::Lazy; 
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub enum Operator {
