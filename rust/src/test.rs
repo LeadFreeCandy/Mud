@@ -134,6 +134,11 @@ fn string_literal() {
     test_run(filename, Some("testcatcat"));
 }
 
+#[test]
+fn operators(){
+    let filename = "operators.mud";
+    test_run(filename, Some("Passed"));
+}
 
 #[test]
 fn pointer(){

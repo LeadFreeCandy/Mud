@@ -124,6 +124,12 @@ impl Compiler {
             Operator::Asterisk => self.mul(lhs, rhs),
             Operator::Semicolon => self.comp(lhs, rhs),
             Operator::Colon => self.decl(lhs, rhs),
+            Operator::LessThan => self.lt(lhs, rhs),
+            Operator::GreaterThan => self.gt(lhs, rhs),
+            Operator::DoubleEquals => self.eq(lhs, rhs),
+            Operator::ExclaimEquals => self.ne(lhs, rhs),
+            Operator::DoubleAmpersand => self.and(lhs, rhs),
+            Operator::DoubleBar => self.or(lhs, rhs),
             Operator::Equals=> self.assign(lhs, rhs),
             Operator::ColonEquals=> self.assign_func_struct_const(lhs, rhs),
             Operator::Dot=> self.dot(lhs, rhs),
@@ -155,6 +161,7 @@ impl Compiler {
             },
             _ => {
                 match op {
+                    Operator::Exclaim => self.not(oprand),
                     Operator::Minus => self.negate(oprand),
                     Operator::LessThan => self.print(oprand),
                     Operator::Asterisk => self.deref(oprand),
@@ -308,10 +315,47 @@ impl Compiler {
         }
     }
 
-    fn div(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
+    fn lt(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
         match (self.resolve_type(&lhs)?, self.resolve_type(&rhs)?) {
-            (ValueType::I32, ValueType::I32) => Ok(CompiledAtom::new(format!("({}/{})", lhs.source, rhs.source), ValueType::I32, ExprType::Expression)),
-            (l, r) => MudResult::Err(ErrorType::CompileError(format!("Cannot divide types {:?} and {:?}", l, r))),
+            (ValueType::I32, ValueType::I32) => Ok(CompiledAtom::new(format!("({}<{})", lhs.source, rhs.source), ValueType::I32, ExprType::Expression)),
+            (l, r) => MudResult::Err(ErrorType::CompileError(format!("Cannot compare order of  types {:?} and {:?}", l, r))),
+        }
+    }
+
+    fn gt(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
+        match (self.resolve_type(&lhs)?, self.resolve_type(&rhs)?) {
+            (ValueType::I32, ValueType::I32) => Ok(CompiledAtom::new(format!("({}>{})", lhs.source, rhs.source), ValueType::I32, ExprType::Expression)),
+            (l, r) => MudResult::Err(ErrorType::CompileError(format!("Cannot compare order of types {:?} and {:?}", l, r))),
+        }
+    }
+
+    fn eq(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
+        match (self.resolve_type(&lhs)?, self.resolve_type(&rhs)?) {
+            (ValueType::I32, ValueType::I32) => Ok(CompiledAtom::new(format!("({}=={})", lhs.source, rhs.source), ValueType::I32, ExprType::Expression)),
+            (ValueType::Pointer(_), ValueType::Pointer(_)) => Ok(CompiledAtom::new(format!("({}=={})", lhs.source, rhs.source), ValueType::I32, ExprType::Expression)),
+            (l, r) => MudResult::Err(ErrorType::CompileError(format!("Cannot compare types {:?} and {:?}", l, r))),
+        }
+    }
+
+    fn ne(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
+        match (self.resolve_type(&lhs)?, self.resolve_type(&rhs)?) {
+            (ValueType::I32, ValueType::I32) => Ok(CompiledAtom::new(format!("({}!={})", lhs.source, rhs.source), ValueType::I32, ExprType::Expression)),
+            (ValueType::Pointer(_), ValueType::Pointer(_)) => Ok(CompiledAtom::new(format!("({}!={})", lhs.source, rhs.source), ValueType::I32, ExprType::Expression)),
+            (l, r) => MudResult::Err(ErrorType::CompileError(format!("Cannot compare types {:?} and {:?}", l, r))),
+        }
+    }
+
+    fn and(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
+        match (self.resolve_type(&lhs)?, self.resolve_type(&rhs)?) {
+            (ValueType::I32, ValueType::I32) => Ok(CompiledAtom::new(format!("({}&&{})", lhs.source, rhs.source), ValueType::I32, ExprType::Expression)),
+            (l, r) => MudResult::Err(ErrorType::CompileError(format!("Cannot do {:?} && {:?}", l, r))),
+        }
+    }
+
+    fn or(&self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
+        match (self.resolve_type(&lhs)?, self.resolve_type(&rhs)?) {
+            (ValueType::I32, ValueType::I32) => Ok(CompiledAtom::new(format!("({}||{})", lhs.source, rhs.source), ValueType::I32, ExprType::Expression)),
+            (l, r) => MudResult::Err(ErrorType::CompileError(format!("Cannot do {:?} || {:?}", l, r))),
         }
     }
 
@@ -536,6 +580,13 @@ impl Compiler {
                 result
             }
             e => MudResult::Err(ErrorType::CompileError(format!("Invalid lhs of assignment {:?}", e))),
+        }
+    }
+
+    fn not(&self, oprand: CompiledAtom) -> MudResult<CompiledAtom> {
+        match self.resolve_type(&oprand)? {
+            ValueType::I32 => Ok(CompiledAtom::new(format!("(!{})", oprand.source), ValueType::I32, ExprType::Expression)),
+            e => MudResult::Err(ErrorType::CompileError(format!("Cannot do !{:?}", e))),
         }
     }
 

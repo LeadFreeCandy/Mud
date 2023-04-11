@@ -35,7 +35,13 @@ pub enum Operator {
 
     Dot,
 
-    At,
+    DoubleEquals,
+    ExclaimEquals,
+
+    DoubleAmpersand,
+    DoubleBar,
+
+    Exclaim,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -74,8 +80,15 @@ static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
     operator_map.insert(",", Operator::Comma);
     operator_map.insert(":=", Operator::ColonEquals);
 
+    operator_map.insert("==", Operator::DoubleEquals);
+    operator_map.insert("!=", Operator::ExclaimEquals);
+
+    operator_map.insert("&&", Operator::DoubleAmpersand);
+    operator_map.insert("||", Operator::DoubleBar);
+
+    operator_map.insert("!", Operator::Exclaim);
+
     operator_map.insert(".", Operator::Dot);
-    operator_map.insert("@", Operator::At);
 
     operator_map
 });
@@ -134,8 +147,8 @@ impl Lexer {
             self.index += 1;
         }
 
-        if self.peek() == '#' as u8{
-            while self.peek() != '\n' as u8{
+        if self.peek() == '#' as u8 {
+            while self.peek() != '\n' as u8 {
                 self.index += 1;
             }
 
