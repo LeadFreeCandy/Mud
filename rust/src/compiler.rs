@@ -472,6 +472,7 @@ impl Compiler {
 
             for arg in args {
                 if let Expression::BinaryOperation { op, lhs, rhs } = arg {
+                    this.is_decl = true;
                     let rhs = this.convert(*rhs)?;
                     if let (Operator::Colon, Expression::Identifier(ident), ExprType::Type) = (op, *lhs, &rhs.atom_type.expr) {
                         strs.push(format!("{} {ident}", &rhs.source));
