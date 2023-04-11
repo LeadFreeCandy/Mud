@@ -17,6 +17,10 @@ Cat := struct{
   <(cat.name);
   <" the cat is ";
   <(cat.age);
-  <" years old.\n"
+  <" years old.\n";
+
+  cat_ptr : *Cat;
+  cat_ptr = &cat;
+  (*cat_ptr).name = "ted"
 })
 

@@ -39,6 +39,7 @@ struct CompiledAtom {
 pub struct Compiler {
     scope_stack: Vec<HashMap<String, ValueType>>,
     forward_decls: String,
+    is_decl: bool,
 }
 
 impl CompiledAtom {
@@ -83,7 +84,7 @@ impl Compiler {
         globals.insert("calloc".to_string(), ValueType::Function { args: vec![ValueType::I32], return_type: Box::new(ValueType::Pointer(Box::new(ValueType::Void))) });
         globals.insert("read_file".to_string(), ValueType::Function { args: vec![ValueType::Pointer(Box::new(ValueType::U8))], return_type: Box::new(ValueType::Pointer(Box::new(ValueType::U8))) });
 
-        Self { scope_stack: vec![globals], forward_decls: String::new() }
+        Self { scope_stack: vec![globals], forward_decls: String::new(), is_decl:false}
     }
 
     pub fn compile_full(&mut self, program: Vec<u8>) -> MudResult<Vec<u8>>{
@@ -106,6 +107,9 @@ impl Compiler {
     }
 
     fn binary_op_transpile(&mut self, op: Operator, lhs: Expression, rhs: Expression) -> MudResult<CompiledAtom> {
+
+        self.is_decl = op == Operator::Colon;
+        
         let lhs = self.convert(lhs)?;
         if let ExprType::Identifier = lhs.atom_type.expr {
             if let Expression::Block(inner) = rhs {
@@ -131,13 +135,23 @@ impl Compiler {
     fn unary_op_transpile(&mut self, op: Operator, oprand: Expression) -> MudResult<CompiledAtom> {
         let oprand = self.convert(oprand)?;
 
-        match oprand.atom_type.expr {
-            ExprType::Type => {
-                // unreachable!("should not be calling unary transpile this");
+        dbg!(&oprand.atom_type.expr);
+        dbg!(&oprand.atom_type);
+        match (&oprand.atom_type.expr, &op, self.is_decl) {
+            (ExprType::Type, _, _ ) => {
                 match op {
                     Operator::Asterisk => self.pointer_type(oprand),
-                    _ => Err(ErrorType::CompileError(format!("Unary operator {:?} on type cannot be transpiled", op))),
+                    _ => {
+                        dbg!(oprand);
+                        Err(ErrorType::CompileError(format!("Unary operator {:?} on type cannot be transpiled", op)))
+                    },
                 }
+            },
+            (ExprType::Identifier, Operator::Asterisk, true) => {
+                // dbg!(&self.resolve_type(&oprand));
+                // dbg!(oprand.source);
+                // Err(ErrorType::CompileError(format!("Unary operator {:?} on type cannot be transpiled", op)))
+                self.pointer_type(oprand)
             },
             _ => {
                 match op {
@@ -326,7 +340,9 @@ impl Compiler {
     }
 
     fn decl(&mut self, lhs: CompiledAtom, rhs: CompiledAtom) -> MudResult<CompiledAtom> {
-        match (lhs.atom_type.expr, &rhs.atom_type.expr) {
+                dbg!(&lhs);
+                dbg!(&rhs);
+        match (&lhs.atom_type.expr, &rhs.atom_type.expr) {
             (ExprType::Identifier, ExprType::Type) => {
                 let res = CompiledAtom::new(format!("{} {}", rhs.source, lhs.source), ValueType::Void, ExprType::Expression);
 
@@ -378,7 +394,7 @@ impl Compiler {
             MudResult::Err(ErrorType::CompileError(format!("Expected type {lhs:?} but got type {rhs:?} in assignment")))
         }
 
-        match lhs.atom_type.expr {
+        match &lhs.atom_type.expr {
             ExprType::Identifier => {
                 let lhs_type = self.resolve_type(&lhs)?;
                 let rhs_type = self.resolve_type(&rhs)?;
@@ -396,6 +412,10 @@ impl Compiler {
                 Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
             }
             e => {
+                dbg!(&lhs);
+                dbg!(self.resolve_type(&lhs));
+                dbg!(&rhs);
+                // Ok(CompiledAtom::new(format!("{} = {}", lhs.source, rhs.source), ValueType::Void, ExprType::Expression))
                 MudResult::Err(ErrorType::CompileError(format!("Invalid lhs of assignment {:?}", e)))
             },
         }
@@ -539,14 +559,13 @@ impl Compiler {
     fn deref(&self, oprand: CompiledAtom) -> MudResult<CompiledAtom> {
         dbg!("called deref");
         match self.resolve_type(&oprand)? {
-            ValueType::Pointer(inner) => Ok(CompiledAtom::new(format!("*{}", oprand.source), *inner, ExprType::Expression)),
-            // ValueType::Integer => Ok(CompiledAtom::new(format!("(-{})", oprand.source), ValueType::Integer, ExprType::Expression)),
+            ValueType::Pointer(inner) => Ok(CompiledAtom::new(format!("(*{})", oprand.source), *inner, ExprType::Expression)),
             e => MudResult::Err(ErrorType::CompileError(format!("Cannot deref type {:?}", e))),
         }
     }
 
     fn pointer_type(&self, oprand: CompiledAtom) -> MudResult<CompiledAtom> {
-        dbg!(self.resolve_type(&oprand));
+        dbg!(self.resolve_type(&oprand)?);
         dbg!(&oprand);
         Ok::<CompiledAtom, ErrorType>(CompiledAtom::new(format!("{}*", oprand.source), ValueType::Pointer(Box::new(self.resolve_type(&oprand)?)), ExprType::Type))
     }
@@ -564,6 +583,7 @@ impl Compiler {
 
 
     fn find_type(&self, atom: &CompiledAtom) -> MudResult<ValueType> {
+
         match atom.atom_type.expr {
             ExprType::Type => {
                 if let ValueType::Pointer(inner) = &atom.atom_type.value{
@@ -575,6 +595,7 @@ impl Compiler {
 
                     return Ok(ValueType::Pointer(Box::new(self.find_type(&fake_atom)?)));
                 }
+                // return Ok(atom.atom_type.value.clone());
                 match &atom.source[..] {
                     "int" => {
                         return Ok(ValueType::I32)
@@ -582,7 +603,11 @@ impl Compiler {
                     "char" => {
                         return Ok(ValueType::U8)
                     }
-                    &_ => todo!("add more types")
+                    &_ => {
+                        return Ok(atom.atom_type.value.clone());
+                        // dbg!(atom);
+                        // todo!("add more types")
+                    }
                 }
             }
             _ => Ok(atom.atom_type.value.clone()),

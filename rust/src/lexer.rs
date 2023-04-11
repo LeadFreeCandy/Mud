@@ -34,6 +34,8 @@ pub enum Operator {
     Ampersand,
 
     Dot,
+
+    At,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -45,6 +47,7 @@ pub enum Keyword {
     Struct,
     Return,
 }
+
 
 static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
     let mut operator_map: HashMap<&'static str, Operator> = HashMap::new();
@@ -72,6 +75,7 @@ static OPERATORS: Lazy<HashMap<&'static str, Operator>> = Lazy::new(|| {
     operator_map.insert(":=", Operator::ColonEquals);
 
     operator_map.insert(".", Operator::Dot);
+    operator_map.insert("@", Operator::At);
 
     operator_map
 });

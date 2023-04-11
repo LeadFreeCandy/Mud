@@ -175,3 +175,9 @@ fn r#const(){
     let filename = "const.mud";
     test_run(filename, Some("100"))
 }
+
+#[test]
+fn casting(){
+    let filename = "casting.mud";
+    test_run(filename, Some("42"));
+}
